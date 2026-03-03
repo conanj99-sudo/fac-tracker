@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FAC – Friday Afternoon Club | JP2 Independent School</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;min-height:100vh;padding:16px}
+    h1{font-size:1.5rem;font-weight:700;letter-spacing:.03em}
+    .subtitle{color:#bfdbfe;font-size:.85rem;margin-top:3px}
+    .header{background:#1e3a8a;color:white;border-radius:12px;padding:20px 24px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:0 2px 8px #0002}
+    .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .sync-badge{font-size:.78rem;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap}
+    .sync-ok{background:#16a34a;color:#fff}
+    .sync-saving{background:#d97706;color:#fff}
+    .sync-err{background:#dc2626;color:#fff}
+    .sync-local{background:#6b7280;color:#fff}
+    .btn{border:none;border-radius:8px;padding:9px 18px;font-size:.82rem;font-weight:600;cursor:pointer;transition:background .2s;color:white}
+    .btn-green{background:#22c55e}.btn-green:hover{background:#16a34a}
+    .btn-blue{background:#1d4ed8}.btn-blue:hover{background:#1e40af}
+    .btn-gray{background:#6b7280}.btn-gray:hover{background:#4b5563}
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px}
+    .stat{background:white;border-radius:10px;padding:12px;text-align:center;border:1px solid #e5e7eb;box-shadow:0 1px 3px #0001}
+    .stat-val{font-size:1.6rem;font-weight:700;color:#1d4ed8}
+    .stat-lbl{font-size:.72rem;color:#6b7280;margin-top:2px}
+    .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+    .fbtn{padding:4px 14px;border-radius:999px;font-size:.75rem;font-weight:500;border:1px solid #d1d5db;background:white;color:#4b5563;cursor:pointer;transition:all .15s}
+    .fbtn.active{background:#1d4ed8;color:white;border-color:#1d4ed8}
+    .fbtn:hover:not(.active){border-color:#93c5fd}
+    .table-wrap{background:white;border-radius:12px;overflow-x:auto;border:1px solid #e5e7eb;box-shadow:0 1px 4px #0001}
+    table{width:100%;border-collapse:collapse;font-size:.78rem;min-width:900px}
+    thead tr{background:#1d4ed8;color:white}
+    th{padding:9px 8px;text-align:left;font-weight:600;white-space:nowrap}
+    tbody tr:nth-child(even){background:#f8fafc}
+    td{padding:5px 6px}
+    .ci{border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:.78rem;width:100%;background:transparent;outline:none;font-family:inherit}
+    .ci:focus{border-color:#60a5fa;box-shadow:0 0 0 2px #bfdbfe55}
+    .del-btn{background:none;border:none;color:#f87171;font-size:1.1rem;cursor:pointer;font-weight:700;padding:0 4px}
+    .del-btn:hover{color:#dc2626}
+    .info-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    @media(max-width:640px){.info-row{grid-template-columns:1fr}}
+    .info-box{background:white;border-radius:12px;border:1px solid #e5e7eb;box-shadow:0 1px 4px #0001;padding:16px}
+    .info-box h3{font-size:.9rem;font-weight:700;color:#1e3a8a;margin-bottom:8px}
+    .info-box textarea{width:100%;border:1px solid #d1d5db;border-radius:8px;padding:10px;font-size:.82rem;font-family:inherit;resize:vertical;outline:none;min-height:80px;color:#374151}
+    .info-box textarea:focus{border-color:#60a5fa;box-shadow:0 0 0 2px #bfdbfe55}
+    .saved-msg{font-size:.72rem;color:#16a34a;margin-top:4px;height:16px}
+    .meeting-date{margin-top:8px;font-size:.85rem;color:#1d4ed8;font-weight:600}
+    .chart-box{background:white;border-radius:12px;border:1px solid #e5e7eb;box-shadow:0 1px 4px #0001;padding:24px;margin-top:16px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:32px}
+    .chart-box h3{width:100%;font-size:.9rem;font-weight:700;color:#1e3a8a;text-align:center}
+    .chart-legend{display:flex;flex-direction:column;gap:10px}
+    .legend-item{display:flex;align-items:center;gap:8px;font-size:.8rem;color:#374151}
+    .legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+    .footer{text-align:center;font-size:.72rem;color:#9ca3af;margin-top:14px}
+    .loading{text-align:center;padding:40px;color:#6b7280;font-size:.9rem}
+    .modal-bg{position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:100}
+    .modal{background:white;border-radius:14px;padding:28px;width:min(520px,95vw);box-shadow:0 8px 32px #0003}
+    .modal h2{font-size:1.1rem;font-weight:700;margin-bottom:6px;color:#1e3a8a}
+    .modal p{font-size:.82rem;color:#4b5563;margin-bottom:14px;line-height:1.5}
+    .modal input{width:100%;border:1px solid #d1d5db;border-radius:7px;padding:9px 12px;font-size:.85rem;outline:none;margin-bottom:12px}
+    .modal input:focus{border-color:#60a5fa}
+    .modal-btns{display:flex;gap:10px;justify-content:flex-end}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState, useEffect, useRef} = React;
+
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypnsM1fmD7lshJkCt58pBwTIWdvFH-t2jhG2WD32zgihKk-g_DwUn-V8JCSLsCsdfbdQ/exec";
+const TEAMS = ["Carpenter","Plumber","Electrician","Concrete","Roofing","Construction","IT","Landscaping","Grounds Keeping","Misc"];
+const STATUS = ["Planned","In Progress","On Hold","Completed"];
+const STATUS_COLORS = {"Completed":"#22c55e","In Progress":"#f59e0b","Planned":"#60a5fa","On Hold":"#d1d5db"};
+const COLS = [
+  {key:"project",    label:"Project Name",   w:22},
+  {key:"description",label:"Description",    w:30},
+  {key:"team",       label:"Team / Skill",    w:16},
+  {key:"teamLead",   label:"Team Lead",       w:18},
+  {key:"volunteers", label:"Volunteers",      w:22},
+  {key:"startDate",  label:"Start Date",      w:12},
+  {key:"endDate",    label:"End Date",        w:12},
+  {key:"estCost",    label:"Est. Cost ($)",   w:13},
+  {key:"actualCost", label:"Actual Cost ($)", w:14},
+  {key:"status",     label:"Status",          w:13},
+  {key:"notes",      label:"Notes",           w:30}
+];
+const newRow = () => ({project:"",description:"",team:TEAMS[0],teamLead:"",volunteers:"",startDate:"",endDate:"",estCost:"",actualCost:"",status:"Planned",notes:""});
+const LS_ROWS = "fac_rows", LS_NOTES = "fac_notes", LS_MEETING = "fac_meeting";
+
+function ProjectDonut({ rows }) {
+  const total = rows.length;
+  const counts = STATUS.reduce((a,s) => { a[s]=rows.filter(r=>r.status===s).length; return a; }, {});
+  const completed = counts["Completed"]||0;
+  const pct = total>0 ? Math.round((completed/total)*100) : 0;
+  const R=70, cx=90, cy=90, stroke=28, circ=2*Math.PI*R;
+  let offset=0;
+  const segs = STATUS.map(s => {
+    const val=counts[s]||0, frac=total>0?val/total:0, dash=frac*circ;
+    const seg={s,val,dash,offset,color:STATUS_COLORS[s]};
+    offset+=dash; return seg;
+  }).filter(s=>s.val>0);
+  return (
+    <div className="chart-box">
+      <h3>📊 Project Completion Overview</h3>
+      <svg width="180" height="180" viewBox="0 0 180 180">
+        {total===0
+          ? <circle cx={cx} cy={cy} r={R} fill="none" stroke="#e5e7eb" strokeWidth={stroke}/>
+          : segs.map((seg,i)=>(
+            <circle key={i} cx={cx} cy={cy} r={R} fill="none"
+              stroke={seg.color} strokeWidth={stroke}
+              strokeDasharray={`${seg.dash} ${circ-seg.dash}`}
+              strokeDashoffset={-seg.offset+circ/4}
+              style={{transform:"rotate(-90deg)",transformOrigin:"50% 50%"}}
+            />
+          ))
+        }
+        <text x={cx} y={cy-10} textAnchor="middle" fontSize="22" fontWeight="700" fill="#1e3a8a">{pct}%</text>
+        <text x={cx} y={cy+12} textAnchor="middle" fontSize="11" fill="#6b7280">Complete</text>
+        <text x={cx} y={cy+26} textAnchor="middle" fontSize="10" fill="#9ca3af">{completed}/{total} projects</text>
+      </svg>
+      <div className="chart-legend">
+        {STATUS.map(s=>(
+          <div className="legend-item" key={s}>
+            <div className="legend-dot" style={{background:STATUS_COLORS[s]}}></div>
+            <span><strong>{counts[s]||0}</strong> {s}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [rows, setRows] = useState([newRow()]);
+  const [filter, setFilter] = useState("All");
+  const [syncStatus, setSyncStatus] = useState("saving");
+  const [loaded, setLoaded] = useState(false);
+  const [notes, setNotes] = useState(()=>{ try{return localStorage.getItem(LS_NOTES)||"";}catch{return "";} });
+  const [notesSaved, setNotesSaved] = useState(false);
+  const [nextMeeting, setNextMeeting] = useState(()=>{ try{return localStorage.getItem(LS_MEETING)||"";}catch{return "";} });
+  const [meetingSaved, setMeetingSaved] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
+  const debounceRef = useRef(null);
+  const notesRef = useRef(null);
+  const meetingRef = useRef(null);
+  const userChangedRef = useRef(false);
+
+  const loadFromSheets = () => {
+    setSyncStatus("saving");
+    let localData = [];
+    try { const s=localStorage.getItem(LS_ROWS); if(s) localData=JSON.parse(s); } catch{}
+    fetch(SCRIPT_URL+"?nocache="+Date.now()+"&r="+Math.random(), {cache:"no-store"})
+      .then(r=>r.json())
+      .then(data=>{
+        const sheetsRows=(data.rows||[]).filter(r=>r.project&&r.project.trim()!=="");
+        if(sheetsRows.length>0){
+          setRows(sheetsRows);
+          try{localStorage.setItem(LS_ROWS,JSON.stringify(sheetsRows));}catch{}
+        } else if(localData.length>0){
+          setRows(localData);
+        }
+        if(data.generalNotes!==undefined){
+          setNotes(data.generalNotes);
+          try{localStorage.setItem(LS_NOTES,data.generalNotes);}catch{}
+        }
+        if(data.nextMeeting!==undefined){
+          setNextMeeting(data.nextMeeting);
+          try{localStorage.setItem(LS_MEETING,data.nextMeeting);}catch{}
+        }
+        setSyncStatus("ok");
+        setLoaded(true);
+      })
+      .catch(()=>{
+        if(localData.length>0) setRows(localData);
+        setSyncStatus("err");
+        setLoaded(true);
+      });
+  };
+
+  useEffect(()=>{ loadFromSheets(); }, []);
+
+  // Auto-poll every 30 seconds
+  useEffect(()=>{
+    const interval=setInterval(()=>{ if(!userChangedRef.current) loadFromSheets(); }, 30000);
+    return ()=>clearInterval(interval);
+  }, []);
+
+  // Save rows to Sheets only when user makes a change
+  useEffect(()=>{
+    if(!loaded||!userChangedRef.current) return;
+    try{localStorage.setItem(LS_ROWS,JSON.stringify(rows));}catch{}
+    setSyncStatus("saving");
+    clearTimeout(debounceRef.current);
+    debounceRef.current=setTimeout(()=>{
+      fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({rows,notes,nextMeeting})}).then(()=>setSyncStatus("ok")).catch(()=>setSyncStatus("err"));
+    },2000);
+    return ()=>clearTimeout(debounceRef.current);
+  }, [rows, loaded]);
+
+  const handleNotesChange = v => {
+    setNotes(v);
+    try{localStorage.setItem(LS_NOTES,v);}catch{}
+    setNotesSaved(true);
+    clearTimeout(notesRef.current);
+    notesRef.current=setTimeout(()=>{
+      setNotesSaved(false);
+      fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({rows,notes:v,nextMeeting})}).catch(()=>{});
+    },2000);
+  };
+
+  const handleMeetingChange = v => {
+    setNextMeeting(v);
+    try{localStorage.setItem(LS_MEETING,v);}catch{}
+    setMeetingSaved(true);
+    clearTimeout(meetingRef.current);
+    meetingRef.current=setTimeout(()=>{
+      setMeetingSaved(false);
+      fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({rows,notes,nextMeeting:v})}).catch(()=>{});
+    },2000);
+  };
+
+  const update = (i,k,v)=>{ userChangedRef.current=true; setRows(r=>r.map((row,idx)=>idx===i?{...row,[k]:v}:row)); };
+  const addRow = ()=>{ userChangedRef.current=true; setRows(r=>[...r,newRow()]); };
+  const removeRow = i=>{ userChangedRef.current=true; setRows(r=>r.filter((_,idx)=>idx!==i)); };
+
+  const exportXLSX = () => {
+    const hdr=COLS.map(c=>c.label), wb=XLSX.utils.book_new();
+    const cover=[["JP2 Independent School"],["FAC – Friday Afternoon Club"],["Project Tracker"],[],["Generated:",new Date().toLocaleDateString()],["Total Projects:",rows.length],["Teams:",[...new Set(rows.map(r=>r.team))].join(", ")]];
+    const wc=XLSX.utils.aoa_to_sheet(cover); wc["!cols"]=[{wch:20},{wch:50}];
+    XLSX.utils.book_append_sheet(wb,wc,"Overview");
+    const wa=XLSX.utils.aoa_to_sheet([hdr,...rows.map(r=>COLS.map(c=>r[c.key]))]);
+    wa["!cols"]=COLS.map(c=>({wch:c.w})); XLSX.utils.book_append_sheet(wb,wa,"All Projects");
+    TEAMS.forEach(team=>{
+      const tr=rows.filter(r=>r.team===team); if(!tr.length)return;
+      const ws=XLSX.utils.aoa_to_sheet([hdr,...tr.map(r=>COLS.map(c=>r[c.key]))]);
+      ws["!cols"]=COLS.map(c=>({wch:c.w})); XLSX.utils.book_append_sheet(wb,ws,team.substring(0,31));
+    });
+    XLSX.writeFile(wb,"FAC_ProjectTracker_JP2.xlsx");
+  };
+
+  const visible = filter==="All" ? rows : rows.filter(r=>r.team===filter);
+  const budget = rows.reduce((s,r)=>s+(parseFloat(r.estCost)||0),0);
+  const syncLabel={ok:"✔ Synced to Sheets",saving:"⏳ Saving...",err:"⚠ Sync Error",local:"💾 Local Only"}[syncStatus]||"⏳ Loading...";
+  const syncClass={ok:"sync-ok",saving:"sync-saving",err:"sync-err",local:"sync-local"}[syncStatus]||"sync-saving";
+
+  if(!loaded) return (
+    <div>
+      <div className="header">
+        <div><h1>⚒ Friday Afternoon Club</h1><div className="subtitle">JP2 Independent School — FAC Project Tracker</div></div>
+      </div>
+      <div className="loading">⏳ Loading your projects from Google Sheets...</div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="header">
+        <div><h1>⚒ Friday Afternoon Club</h1><div className="subtitle">JP2 Independent School — FAC Project Tracker</div></div>
+        <div className="header-right">
+          <span className={"sync-badge "+syncClass}>{syncLabel}</span>
+          <button className="btn btn-gray" onClick={loadFromSheets}>🔄 Reload</button>
+          <button className="btn btn-gray" onClick={()=>setShowSetup(true)}>⚙ Google Sheets</button>
+          <button className="btn btn-green" onClick={exportXLSX}>⬇ Download Excel</button>
+        </div>
+      </div>
+
+      {/* General Notes + Next Meeting side by side */}
+      <div className="info-row">
+        <div className="info-box">
+          <h3>📋 General Notes & Announcements</h3>
+          <textarea placeholder="Use this space for general FAC notes, announcements, reminders or anything the whole team should see..." value={notes} onChange={e=>handleNotesChange(e.target.value)}/>
+          <div className="saved-msg">{notesSaved?"✔ Saved":""}</div>
+        </div>
+        <div className="info-box">
+          <h3>📅 Next Meeting</h3>
+          <input type="date" className="ci" style={{maxWidth:"200px",fontSize:".85rem",padding:"8px 10px"}} value={nextMeeting} onChange={e=>handleMeetingChange(e.target.value)}/>
+          {nextMeeting && <div className="meeting-date">📆 {new Date(nextMeeting+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</div>}
+          <div className="saved-msg">{meetingSaved?"✔ Saved":""}</div>
+        </div>
+      </div>
+
+      <div className="stats">
+        {[{label:"Total Projects",val:rows.length},{label:"In Progress",val:rows.filter(r=>r.status==="In Progress").length},{label:"Completed",val:rows.filter(r=>r.status==="Completed").length},{label:"Est. Budget",val:"$"+budget.toLocaleString()}].map(s=>(
+          <div className="stat" key={s.label}><div className="stat-val">{s.val}</div><div className="stat-lbl">{s.label}</div></div>
+        ))}
+      </div>
+
+      <div className="filters">
+        {["All",...TEAMS].map(t=>(
+          <button key={t} className={"fbtn"+(filter===t?" active":"")} onClick={()=>setFilter(t)}>{t}</button>
+        ))}
+      </div>
+
+      <div className="table-wrap">
+        <table>
+          <thead><tr>{COLS.map(c=><th key={c.key}>{c.label}</th>)}<th></th></tr></thead>
+          <tbody>
+            {visible.map((row,fi)=>{
+              const i=rows.indexOf(row);
+              return (
+                <tr key={i}>
+                  {COLS.map(c=>(
+                    <td key={c.key}>
+                      {c.key==="team"?<select className="ci" value={row.team} onChange={e=>update(i,"team",e.target.value)}>{TEAMS.map(t=><option key={t}>{t}</option>)}</select>
+                      :c.key==="status"?<select className="ci" value={row.status} onChange={e=>update(i,"status",e.target.value)}>{STATUS.map(s=><option key={s}>{s}</option>)}</select>
+                      :(c.key==="startDate"||c.key==="endDate")?<input type="date" className="ci" value={row[c.key]} onChange={e=>update(i,c.key,e.target.value)}/>
+                      :(c.key==="estCost"||c.key==="actualCost")?<input type="number" className="ci" placeholder="0" value={row[c.key]} onChange={e=>update(i,c.key,e.target.value)}/>
+                      :(c.key==="description"||c.key==="notes")?<textarea className="ci" value={row[c.key]} placeholder={c.label} onChange={e=>update(i,c.key,e.target.value)} style={{minHeight:"60px",resize:"vertical"}}/>
+                      :<input type="text" className="ci" value={row[c.key]} placeholder={c.label} onChange={e=>update(i,c.key,e.target.value)}/>}
+                    </td>
+                  ))}
+                  <td><button className="del-btn" onClick={()=>removeRow(i)}>×</button></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <button className="btn btn-blue" style={{marginTop:14}} onClick={addRow}>+ Add Project</button>
+
+      <ProjectDonut rows={rows}/>
+
+      <div className="footer">Data auto-saves to Google Sheets. Auto-refreshes every 30 seconds.</div>
+
+      {showSetup&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setShowSetup(false)}>
+          <div className="modal">
+            <h2>🔗 Google Sheets Connection</h2>
+            <p>Your app is pre-connected to Google Sheets. This URL is already configured:</p>
+            <input value={SCRIPT_URL} readOnly style={{background:"#f8fafc",color:"#6b7280"}}/>
+            <div className="modal-btns">
+              <button className="btn btn-gray" onClick={()=>setShowSetup(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
