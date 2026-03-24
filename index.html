@@ -264,6 +264,7 @@ function App() {
   const [showSetup, setShowSetup] = useState(false);
   const [myName, setMyName] = useState(()=>{ try{return localStorage.getItem(LS_MY_NAME)||"";}catch{return "";} });
   const [signupRowIndex, setSignupRowIndex] = useState(null);
+  const autoSignupDone = useRef(false);
   const debounceRef = useRef(null);
   const notesRef = useRef(null);
   const meetingRef = useRef(null);
@@ -302,6 +303,19 @@ function App() {
   };
 
   useEffect(()=>{ loadFromSheets(); }, []);
+
+  // Auto-open signup popup if ?signup=workday is in the URL
+  useEffect(()=>{
+    if(!loaded || autoSignupDone.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("signup");
+    if(!target) return;
+    const idx = rows.findIndex(r=>r.project&&r.project.trim().toLowerCase()===target.toLowerCase());
+    if(idx !== -1){
+      autoSignupDone.current = true;
+      setSignupRowIndex(idx);
+    }
+  }, [loaded, rows]);
 
   useEffect(()=>{
     const interval=setInterval(()=>{ if(!userChangedRef.current) loadFromSheets(); }, 30000);
