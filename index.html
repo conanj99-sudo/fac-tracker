@@ -204,7 +204,7 @@ function WorkdayBanner({ workdayRow, workdayIndex, myName, onOpenSignup }) {
     <div className="workday-banner">
       <div className="workday-banner-left">
         <div className="workday-banner-title">🏗️ Workday</div>
-        <div className="workday-banner-sub">{workdayRow.description || "All-hands project day — everyone welcome!"}</div>
+        <div className="workday-banner-sub">{workdayRow.notes || workdayRow.description || "All-hands project day — everyone welcome!"}</div>
         <div className="workday-banner-meta">
           <div className="workday-meta-item">
             <span className="workday-meta-label">📅 Date</span>
