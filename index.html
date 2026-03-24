@@ -66,6 +66,26 @@
     .modal input:focus{border-color:#60a5fa}
     .modal-btns{display:flex;gap:10px;justify-content:flex-end}
 
+    /* Workday banner */
+    .workday-banner{background:linear-gradient(135deg,#1e3a8a 0%,#f97316 100%);border-radius:14px;padding:24px 28px;margin-bottom:16px;color:white;box-shadow:0 4px 16px #0003;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+    .workday-banner-left{display:flex;flex-direction:column;gap:6px}
+    .workday-banner-title{font-size:1.4rem;font-weight:800;letter-spacing:.02em;display:flex;align-items:center;gap:10px}
+    .workday-banner-sub{font-size:.85rem;opacity:.9;font-weight:500}
+    .workday-banner-meta{display:flex;gap:20px;flex-wrap:wrap;margin-top:4px}
+    .workday-meta-item{display:flex;flex-direction:column;align-items:flex-start}
+    .workday-meta-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;opacity:.75;font-weight:600}
+    .workday-meta-value{font-size:1.1rem;font-weight:700}
+    .workday-banner-right{display:flex;flex-direction:column;align-items:center;gap:8px}
+    .workday-big-signup{border:none;border-radius:12px;padding:14px 28px;font-size:1rem;font-weight:800;cursor:pointer;background:white;color:#f97316;transition:all .2s;box-shadow:0 2px 8px #0002;white-space:nowrap}
+    .workday-big-signup:hover{background:#fff7ed;transform:scale(1.03)}
+    .workday-big-signup.signed{background:#dcfce7;color:#15803d}
+    .workday-big-signup.signed:hover{background:#bbf7d0}
+    .workday-volunteers-preview{font-size:.75rem;opacity:.85;text-align:center}
+    .workday-no-date{font-size:.85rem;opacity:.7;font-style:italic}
+    tr.workday-row{background:#fff7ed !important;outline:2px solid #f97316;outline-offset:-2px}
+    tr.workday-row td{font-weight:600}
+    .workday-row-badge{display:inline-block;background:#f97316;color:white;border-radius:4px;padding:1px 6px;font-size:.65rem;font-weight:700;margin-left:4px;vertical-align:middle}
+
     /* Sign-up styles */
     .signup-cell{display:flex;flex-direction:column;gap:4px}
     .signup-names{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:2px}
@@ -159,6 +179,48 @@ function ProjectDonut({ rows }) {
             <span><strong>{counts[s]||0}</strong> {s}</span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// Workday Banner component
+function WorkdayBanner({ workdayRow, workdayIndex, myName, onOpenSignup }) {
+  if (!workdayRow) return null;
+  const volunteers = parseVolunteers(workdayRow.volunteers);
+  const isSigned = myName && volunteers.some(v=>v.toLowerCase()===myName.toLowerCase());
+  const dateStr = workdayRow.startDate
+    ? new Date(workdayRow.startDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})
+    : null;
+  return (
+    <div className="workday-banner">
+      <div className="workday-banner-left">
+        <div className="workday-banner-title">🏗️ Workday</div>
+        <div className="workday-banner-sub">{workdayRow.description || "All-hands project day — everyone welcome!"}</div>
+        <div className="workday-banner-meta">
+          <div className="workday-meta-item">
+            <span className="workday-meta-label">📅 Date</span>
+            <span className="workday-meta-value">{dateStr || <span className="workday-no-date">TBD</span>}</span>
+          </div>
+          <div className="workday-meta-item">
+            <span className="workday-meta-label">👷 Volunteers</span>
+            <span className="workday-meta-value">{volunteers.length > 0 ? volunteers.length+" signed up" : "Be the first!"}</span>
+          </div>
+          {volunteers.length > 0 && (
+            <div className="workday-meta-item">
+              <span className="workday-meta-label">👥 Who's in</span>
+              <span className="workday-meta-value" style={{fontSize:".82rem",maxWidth:"300px",lineHeight:"1.4"}}>{volunteers.join(", ")}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="workday-banner-right">
+        <button
+          className={"workday-big-signup"+(isSigned?" signed":"")}
+          onClick={()=>onOpenSignup(workdayIndex)}>
+          {isSigned ? "✅ You're In!" : "✋ Sign Me Up!"}
+        </button>
+        {isSigned && <div className="workday-volunteers-preview">Signed up as <strong>{myName}</strong></div>}
       </div>
     </div>
   );
@@ -399,6 +461,8 @@ function App() {
   const budget = rows.reduce((s,r)=>s+(parseFloat(r.estCost)||0),0);
   const syncLabel={ok:"✔ Synced to Sheets",saving:"⏳ Saving...",err:"⚠ Sync Error",local:"💾 Local Only"}[syncStatus]||"⏳ Loading...";
   const syncClass={ok:"sync-ok",saving:"sync-saving",err:"sync-err",local:"sync-local"}[syncStatus]||"sync-saving";
+  const workdayIndex = rows.findIndex(r=>r.project&&r.project.trim().toLowerCase()==="workday");
+  const workdayRow = workdayIndex !== -1 ? rows[workdayIndex] : null;
 
   if(!loaded) return (
     <div>
@@ -422,6 +486,13 @@ function App() {
           <button className="btn btn-green" onClick={exportXLSX}>⬇ Download Excel</button>
         </div>
       </div>
+
+      <WorkdayBanner
+        workdayRow={workdayRow}
+        workdayIndex={workdayIndex}
+        myName={myName}
+        onOpenSignup={(idx)=>setSignupRowIndex(idx)}
+      />
 
       <div className="info-row">
         <div className="info-box">
@@ -455,11 +526,14 @@ function App() {
           <tbody>
             {visible.map((row,fi)=>{
               const i=rows.indexOf(row);
+              const isWorkday = row.project&&row.project.trim().toLowerCase()==="workday";
               return (
-                <tr key={i}>
+                <tr key={i} className={isWorkday?"workday-row":""}>
                   {COLS.map(c=>(
                     <td key={c.key}>
-                      {c.key==="volunteers"
+                      {c.key==="project"&&isWorkday
+                        ? <><input type="text" className="ci" value={row.project} placeholder="Project Name" onChange={e=>update(i,"project",e.target.value)} style={{fontWeight:700}}/><span className="workday-row-badge">★ WORKDAY</span></>
+                      :c.key==="volunteers"
                         ? <VolunteersCell row={row} rowIndex={i} myName={myName}
                             onUpdate={update}
                             onOpenSignup={(idx)=>setSignupRowIndex(idx)}/>
