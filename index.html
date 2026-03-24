@@ -141,6 +141,18 @@ const LS_ROWS = "fac_rows", LS_NOTES = "fac_notes", LS_MEETING = "fac_meeting", 
 const parseVolunteers = (str) => (str||"").split(",").map(s=>s.trim()).filter(Boolean);
 const joinVolunteers = (arr) => arr.join(", ");
 
+// Headcount helpers — stores as "Name(3)" for Workday signups
+const parseCount = (entry) => {
+  const m = entry.match(/^(.*)\((\d+)\)$/);
+  return m ? {name: m[1].trim(), count: parseInt(m[2])} : {name: entry.trim(), count: 1};
+};
+const totalHeadcount = (volunteers) => volunteers.reduce((sum, v) => sum + parseCount(v).count, 0);
+const formatVolunteerEntry = (name, count) => count > 1 ? `${name}(${count})` : name;
+const displayVolunteerName = (entry) => {
+  const {name, count} = parseCount(entry);
+  return count > 1 ? `${name} +${count-1}` : name;
+};
+
 function ProjectDonut({ rows }) {
   const total = rows.length;
   const counts = STATUS.reduce((a,s) => { a[s]=rows.filter(r=>r.status===s).length; return a; }, {});
@@ -188,7 +200,9 @@ function ProjectDonut({ rows }) {
 function WorkdayBanner({ workdayRow, workdayIndex, myName, onOpenSignup }) {
   if (!workdayRow) return null;
   const volunteers = parseVolunteers(workdayRow.volunteers);
-  const isSigned = myName && volunteers.some(v=>v.toLowerCase()===myName.toLowerCase());
+  const isSigned = myName && volunteers.some(v=>parseCount(v).name.toLowerCase()===myName.toLowerCase());
+  const myEntry = isSigned ? volunteers.find(v=>parseCount(v).name.toLowerCase()===myName.toLowerCase()) : null;
+  const myCount = myEntry ? parseCount(myEntry).count : 1;
   const formatDate = (d) => {
     if(!d) return null;
     const parts = d.toString().split(/[-\/]/);
@@ -211,13 +225,13 @@ function WorkdayBanner({ workdayRow, workdayIndex, myName, onOpenSignup }) {
             <span className="workday-meta-value">{dateStr || <span className="workday-no-date">TBD</span>}</span>
           </div>
           <div className="workday-meta-item">
-            <span className="workday-meta-label">👷 Volunteers</span>
-            <span className="workday-meta-value">{volunteers.length > 0 ? volunteers.length+" signed up" : "Be the first!"}</span>
+            <span className="workday-meta-label">👷 Total People</span>
+            <span className="workday-meta-value">{volunteers.length > 0 ? totalHeadcount(volunteers)+" attending" : "Be the first!"}</span>
           </div>
           {volunteers.length > 0 && (
             <div className="workday-meta-item">
               <span className="workday-meta-label">👥 Who's in</span>
-              <span className="workday-meta-value" style={{fontSize:".82rem",maxWidth:"300px",lineHeight:"1.4"}}>{volunteers.join(", ")}</span>
+              <span className="workday-meta-value" style={{fontSize:".82rem",maxWidth:"300px",lineHeight:"1.4"}}>{volunteers.map(v=>displayVolunteerName(v)).join(", ")}</span>
             </div>
           )}
         </div>
@@ -228,7 +242,7 @@ function WorkdayBanner({ workdayRow, workdayIndex, myName, onOpenSignup }) {
           onClick={()=>onOpenSignup(workdayIndex)}>
           {isSigned ? "✅ You're In!" : "✋ Sign Me Up!"}
         </button>
-        {isSigned && <div className="workday-volunteers-preview">Signed up as <strong>{myName}</strong></div>}
+        {isSigned && <div className="workday-volunteers-preview">Signed up as <strong>{myName}</strong>{myCount>1?` (+${myCount-1} others)`:""}</div>}
       </div>
     </div>
   );
@@ -237,14 +251,17 @@ function WorkdayBanner({ workdayRow, workdayIndex, myName, onOpenSignup }) {
 // Sign-up modal component
 function SignupModal({ project, currentVolunteers, myName, onClose, onSignUp, onLeave, onNameChange }) {
   const [nameInput, setNameInput] = useState(myName||"");
+  const [countInput, setCountInput] = useState(1);
   const volunteers = parseVolunteers(currentVolunteers);
-  const isSigned = myName && volunteers.some(v=>v.toLowerCase()===myName.toLowerCase());
+  const isSigned = myName && volunteers.some(v=>parseCount(v).name.toLowerCase()===myName.toLowerCase());
+  const myEntry = isSigned ? volunteers.find(v=>parseCount(v).name.toLowerCase()===myName.toLowerCase()) : null;
+  const myCount = myEntry ? parseCount(myEntry).count : 1;
 
   const handleSignUp = () => {
     const name = nameInput.trim();
     if(!name) return;
     onNameChange(name);
-    onSignUp(name);
+    onSignUp(name, parseInt(countInput)||1);
     onClose();
   };
 
@@ -263,7 +280,7 @@ function SignupModal({ project, currentVolunteers, myName, onClose, onSignUp, on
         {isSigned ? (
           <>
             <div className="already-signed">
-              You're on the list as <strong>{myName}</strong> 🎉
+              You're on the list as <strong>{myName}</strong> — bringing <strong>{myCount} {myCount===1?"person":"people"}</strong> total 🎉
             </div>
             <button className="leave-btn" onClick={handleLeave}>Remove myself from this project</button>
             <button className="cancel-link" onClick={onClose}>Close</button>
@@ -278,7 +295,15 @@ function SignupModal({ project, currentVolunteers, myName, onClose, onSignUp, on
               onKeyDown={e=>e.key==="Enter"&&handleSignUp()}
               autoFocus
             />
-            <button className="big-btn" onClick={handleSignUp}>✋ Join This Project</button>
+            <div style={{display:"flex",alignItems:"center",gap:"12px",marginBottom:"16px",background:"#f8fafc",borderRadius:"10px",padding:"12px 14px"}}>
+              <span style={{fontSize:".88rem",color:"#374151",fontWeight:600,flex:1}}>👨‍👩‍👧 How many people are you bringing? <span style={{fontSize:".75rem",color:"#9ca3af",fontWeight:400}}>(including yourself)</span></span>
+              <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                <button onClick={()=>setCountInput(c=>Math.max(1,c-1))} style={{width:"28px",height:"28px",borderRadius:"50%",border:"1px solid #d1d5db",background:"white",fontSize:"1.1rem",cursor:"pointer",fontWeight:700,lineHeight:1}}>−</button>
+                <span style={{fontSize:"1.2rem",fontWeight:700,minWidth:"24px",textAlign:"center",color:"#1e3a8a"}}>{countInput}</span>
+                <button onClick={()=>setCountInput(c=>c+1)} style={{width:"28px",height:"28px",borderRadius:"50%",border:"1px solid #d1d5db",background:"white",fontSize:"1.1rem",cursor:"pointer",fontWeight:700,lineHeight:1}}>+</button>
+              </div>
+            </div>
+          <button className="big-btn" onClick={handleSignUp}>✋ Join This Project</button>
             <button className="cancel-link" onClick={onClose}>Cancel</button>
           </>
         )}
@@ -304,17 +329,17 @@ function VolunteersCell({ row, rowIndex, myName, onUpdate, onOpenSignup }) {
       {volunteers.length > 0 && (
         <div className="signup-names">
           {volunteers.map((v,vi)=>{
-            const isMe = myName && v.toLowerCase()===myName.toLowerCase();
+            const isMe = myName && parseCount(v).name.toLowerCase()===myName.toLowerCase();
             return (
               <span key={vi} className={"volunteer-tag"+(isMe?" is-me":"")}>
-                {isMe?"👤 ":""}{v}
+                {isMe?"👤 ":""}{displayVolunteerName(v)}
               </span>
             );
           })}
         </div>
       )}
       <button className="signup-btn" onClick={()=>onOpenSignup(rowIndex)}>
-        {myName && volunteers.some(v=>v.toLowerCase()===myName.toLowerCase())
+        {myName && volunteers.some(v=>parseCount(v).name.toLowerCase()===myName.toLowerCase())
           ? "✅ Signed Up"
           : "✋ Sign Up"}
       </button>
@@ -434,19 +459,20 @@ function App() {
     try{localStorage.setItem(LS_MY_NAME,name);}catch{}
   };
 
-  const handleSignUp = (rowIndex, name) => {
+  const handleSignUp = (rowIndex, name, count) => {
     const row = rows[rowIndex];
     const volunteers = parseVolunteers(row.volunteers);
-    if(!volunteers.some(v=>v.toLowerCase()===name.toLowerCase())){
-      const updated = joinVolunteers([...volunteers, name]);
-      update(rowIndex, "volunteers", updated);
-    }
+    // Remove existing entry for this name if present
+    const filtered = volunteers.filter(v=>parseCount(v).name.toLowerCase()!==name.toLowerCase());
+    const entry = formatVolunteerEntry(name, count||1);
+    const updated = joinVolunteers([...filtered, entry]);
+    update(rowIndex, "volunteers", updated);
   };
 
   const handleLeave = (rowIndex, name) => {
     const row = rows[rowIndex];
     const volunteers = parseVolunteers(row.volunteers);
-    const updated = joinVolunteers(volunteers.filter(v=>v.toLowerCase()!==name.toLowerCase()));
+    const updated = joinVolunteers(volunteers.filter(v=>parseCount(v).name.toLowerCase()!==name.toLowerCase()));
     update(rowIndex, "volunteers", updated);
   };
 
@@ -588,7 +614,7 @@ function App() {
           currentVolunteers={signupRow.volunteers}
           myName={myName}
           onClose={()=>setSignupRowIndex(null)}
-          onSignUp={(name)=>handleSignUp(signupRowIndex, name)}
+          onSignUp={(name, count)=>handleSignUp(signupRowIndex, name, count)}
           onLeave={()=>handleLeave(signupRowIndex, myName)}
           onNameChange={handleNameChange}
         />
