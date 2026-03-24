@@ -189,9 +189,17 @@ function WorkdayBanner({ workdayRow, workdayIndex, myName, onOpenSignup }) {
   if (!workdayRow) return null;
   const volunteers = parseVolunteers(workdayRow.volunteers);
   const isSigned = myName && volunteers.some(v=>v.toLowerCase()===myName.toLowerCase());
-  const dateStr = workdayRow.startDate
-    ? new Date(workdayRow.startDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})
-    : null;
+  const formatDate = (d) => {
+    if(!d) return null;
+    const parts = d.toString().split(/[-\/]/);
+    if(parts.length===3){
+      const [y,m,day] = parts;
+      const dt = new Date(parseInt(y),parseInt(m)-1,parseInt(day));
+      if(!isNaN(dt)) return dt.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+    }
+    return null;
+  };
+  const dateStr = formatDate(workdayRow.startDate);
   return (
     <div className="workday-banner">
       <div className="workday-banner-left">
