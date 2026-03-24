@@ -24,6 +24,7 @@
     .btn-green{background:#22c55e}.btn-green:hover{background:#16a34a}
     .btn-blue{background:#1d4ed8}.btn-blue:hover{background:#1e40af}
     .btn-gray{background:#6b7280}.btn-gray:hover{background:#4b5563}
+    .btn-orange{background:#f97316}.btn-orange:hover{background:#ea580c}
     .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px}
     .stat{background:white;border-radius:10px;padding:12px;text-align:center;border:1px solid #e5e7eb;box-shadow:0 1px 3px #0001}
     .stat-val{font-size:1.6rem;font-weight:700;color:#1d4ed8}
@@ -64,6 +65,31 @@
     .modal input{width:100%;border:1px solid #d1d5db;border-radius:7px;padding:9px 12px;font-size:.85rem;outline:none;margin-bottom:12px}
     .modal input:focus{border-color:#60a5fa}
     .modal-btns{display:flex;gap:10px;justify-content:flex-end}
+
+    /* Sign-up styles */
+    .signup-cell{display:flex;flex-direction:column;gap:4px}
+    .signup-names{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:2px}
+    .volunteer-tag{display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;border-radius:999px;padding:2px 8px;font-size:.72rem;font-weight:600}
+    .volunteer-tag.is-me{background:#dcfce7;color:#15803d}
+    .remove-me{background:none;border:none;color:#ef4444;cursor:pointer;font-size:.85rem;line-height:1;padding:0;font-weight:700}
+    .remove-me:hover{color:#b91c1c}
+    .signup-btn{border:none;border-radius:999px;padding:3px 12px;font-size:.72rem;font-weight:700;cursor:pointer;background:#f97316;color:white;transition:background .2s;white-space:nowrap;align-self:flex-start}
+    .signup-btn:hover{background:#ea580c}
+
+    /* Signup modal special */
+    .signup-modal{background:white;border-radius:16px;padding:32px 28px;width:min(400px,95vw);box-shadow:0 8px 40px #0004;text-align:center}
+    .signup-modal .emoji{font-size:2.5rem;margin-bottom:12px}
+    .signup-modal h2{font-size:1.15rem;font-weight:700;color:#1e3a8a;margin-bottom:6px}
+    .signup-modal .project-name{font-size:1rem;font-weight:700;color:#f97316;margin-bottom:16px}
+    .signup-modal input{width:100%;border:2px solid #e5e7eb;border-radius:10px;padding:12px 14px;font-size:.95rem;outline:none;margin-bottom:16px;text-align:center}
+    .signup-modal input:focus{border-color:#60a5fa}
+    .signup-modal .big-btn{width:100%;padding:12px;font-size:.95rem;border-radius:10px;border:none;font-weight:700;cursor:pointer;color:white;background:#22c55e;transition:background .2s;margin-bottom:8px}
+    .signup-modal .big-btn:hover{background:#16a34a}
+    .signup-modal .cancel-link{font-size:.78rem;color:#9ca3af;cursor:pointer;background:none;border:none}
+    .signup-modal .cancel-link:hover{color:#6b7280}
+    .signup-modal .already-signed{background:#dcfce7;border-radius:10px;padding:12px;font-size:.82rem;color:#15803d;font-weight:600;margin-bottom:14px}
+    .signup-modal .leave-btn{width:100%;padding:10px;font-size:.88rem;border-radius:10px;border:2px solid #fca5a5;font-weight:600;cursor:pointer;color:#dc2626;background:white;transition:all .2s;margin-bottom:8px}
+    .signup-modal .leave-btn:hover{background:#fee2e2}
   </style>
 </head>
 <body>
@@ -89,7 +115,11 @@ const COLS = [
   {key:"notes",      label:"Notes",           w:30}
 ];
 const newRow = () => ({project:"",description:"",team:TEAMS[0],teamLead:"",volunteers:"",startDate:"",endDate:"",estCost:"",actualCost:"",status:"Planned",notes:""});
-const LS_ROWS = "fac_rows", LS_NOTES = "fac_notes", LS_MEETING = "fac_meeting";
+const LS_ROWS = "fac_rows", LS_NOTES = "fac_notes", LS_MEETING = "fac_meeting", LS_MY_NAME = "fac_my_name";
+
+// Helper: parse comma-separated volunteer string into array
+const parseVolunteers = (str) => (str||"").split(",").map(s=>s.trim()).filter(Boolean);
+const joinVolunteers = (arr) => arr.join(", ");
 
 function ProjectDonut({ rows }) {
   const total = rows.length;
@@ -134,6 +164,94 @@ function ProjectDonut({ rows }) {
   );
 }
 
+// Sign-up modal component
+function SignupModal({ project, currentVolunteers, myName, onClose, onSignUp, onLeave, onNameChange }) {
+  const [nameInput, setNameInput] = useState(myName||"");
+  const volunteers = parseVolunteers(currentVolunteers);
+  const isSigned = myName && volunteers.some(v=>v.toLowerCase()===myName.toLowerCase());
+
+  const handleSignUp = () => {
+    const name = nameInput.trim();
+    if(!name) return;
+    onNameChange(name);
+    onSignUp(name);
+    onClose();
+  };
+
+  const handleLeave = () => {
+    onLeave(myName);
+    onClose();
+  };
+
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="signup-modal">
+        <div className="emoji">{isSigned ? "✅" : "🙋"}</div>
+        <h2>{isSigned ? "You're signed up!" : "Sign up for"}</h2>
+        <div className="project-name">{project}</div>
+
+        {isSigned ? (
+          <>
+            <div className="already-signed">
+              You're on the list as <strong>{myName}</strong> 🎉
+            </div>
+            <button className="leave-btn" onClick={handleLeave}>Remove myself from this project</button>
+            <button className="cancel-link" onClick={onClose}>Close</button>
+          </>
+        ) : (
+          <>
+            <input
+              type="text"
+              placeholder="Enter your name"
+              value={nameInput}
+              onChange={e=>setNameInput(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&handleSignUp()}
+              autoFocus
+            />
+            <button className="big-btn" onClick={handleSignUp}>✋ Join This Project</button>
+            <button className="cancel-link" onClick={onClose}>Cancel</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Volunteers cell with sign-up button for Workday projects
+function VolunteersCell({ row, rowIndex, myName, onUpdate, onOpenSignup }) {
+  const isWorkday = row.project && row.project.trim().toLowerCase() === "workday";
+  const volunteers = parseVolunteers(row.volunteers);
+
+  if (!isWorkday) {
+    return (
+      <input type="text" className="ci" value={row.volunteers} placeholder="Volunteers"
+        onChange={e=>onUpdate(rowIndex,"volunteers",e.target.value)}/>
+    );
+  }
+
+  return (
+    <div className="signup-cell">
+      {volunteers.length > 0 && (
+        <div className="signup-names">
+          {volunteers.map((v,vi)=>{
+            const isMe = myName && v.toLowerCase()===myName.toLowerCase();
+            return (
+              <span key={vi} className={"volunteer-tag"+(isMe?" is-me":"")}>
+                {isMe?"👤 ":""}{v}
+              </span>
+            );
+          })}
+        </div>
+      )}
+      <button className="signup-btn" onClick={()=>onOpenSignup(rowIndex)}>
+        {myName && volunteers.some(v=>v.toLowerCase()===myName.toLowerCase())
+          ? "✅ Signed Up"
+          : "✋ Sign Up"}
+      </button>
+    </div>
+  );
+}
+
 function App() {
   const [rows, setRows] = useState([newRow()]);
   const [filter, setFilter] = useState("All");
@@ -144,6 +262,8 @@ function App() {
   const [nextMeeting, setNextMeeting] = useState(()=>{ try{return localStorage.getItem(LS_MEETING)||"";}catch{return "";} });
   const [meetingSaved, setMeetingSaved] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
+  const [myName, setMyName] = useState(()=>{ try{return localStorage.getItem(LS_MY_NAME)||"";}catch{return "";} });
+  const [signupRowIndex, setSignupRowIndex] = useState(null);
   const debounceRef = useRef(null);
   const notesRef = useRef(null);
   const meetingRef = useRef(null);
@@ -183,13 +303,11 @@ function App() {
 
   useEffect(()=>{ loadFromSheets(); }, []);
 
-  // Auto-poll every 30 seconds
   useEffect(()=>{
     const interval=setInterval(()=>{ if(!userChangedRef.current) loadFromSheets(); }, 30000);
     return ()=>clearInterval(interval);
   }, []);
 
-  // Save rows to Sheets only when user makes a change
   useEffect(()=>{
     if(!loaded||!userChangedRef.current) return;
     try{localStorage.setItem(LS_ROWS,JSON.stringify(rows));}catch{}
@@ -227,6 +345,27 @@ function App() {
   const addRow = ()=>{ userChangedRef.current=true; setRows(r=>[...r,newRow()]); };
   const removeRow = i=>{ userChangedRef.current=true; setRows(r=>r.filter((_,idx)=>idx!==i)); };
 
+  const handleNameChange = (name) => {
+    setMyName(name);
+    try{localStorage.setItem(LS_MY_NAME,name);}catch{}
+  };
+
+  const handleSignUp = (rowIndex, name) => {
+    const row = rows[rowIndex];
+    const volunteers = parseVolunteers(row.volunteers);
+    if(!volunteers.some(v=>v.toLowerCase()===name.toLowerCase())){
+      const updated = joinVolunteers([...volunteers, name]);
+      update(rowIndex, "volunteers", updated);
+    }
+  };
+
+  const handleLeave = (rowIndex, name) => {
+    const row = rows[rowIndex];
+    const volunteers = parseVolunteers(row.volunteers);
+    const updated = joinVolunteers(volunteers.filter(v=>v.toLowerCase()!==name.toLowerCase()));
+    update(rowIndex, "volunteers", updated);
+  };
+
   const exportXLSX = () => {
     const hdr=COLS.map(c=>c.label), wb=XLSX.utils.book_new();
     const cover=[["JP2 Independent School"],["FAC – Friday Afternoon Club"],["Project Tracker"],[],["Generated:",new Date().toLocaleDateString()],["Total Projects:",rows.length],["Teams:",[...new Set(rows.map(r=>r.team))].join(", ")]];
@@ -256,6 +395,8 @@ function App() {
     </div>
   );
 
+  const signupRow = signupRowIndex !== null ? rows[signupRowIndex] : null;
+
   return (
     <div>
       <div className="header">
@@ -268,7 +409,6 @@ function App() {
         </div>
       </div>
 
-      {/* General Notes + Next Meeting side by side */}
       <div className="info-row">
         <div className="info-box">
           <h3>📋 General Notes & Announcements</h3>
@@ -305,7 +445,11 @@ function App() {
                 <tr key={i}>
                   {COLS.map(c=>(
                     <td key={c.key}>
-                      {c.key==="team"?<select className="ci" value={row.team} onChange={e=>update(i,"team",e.target.value)}>{TEAMS.map(t=><option key={t}>{t}</option>)}</select>
+                      {c.key==="volunteers"
+                        ? <VolunteersCell row={row} rowIndex={i} myName={myName}
+                            onUpdate={update}
+                            onOpenSignup={(idx)=>setSignupRowIndex(idx)}/>
+                      :c.key==="team"?<select className="ci" value={row.team} onChange={e=>update(i,"team",e.target.value)}>{TEAMS.map(t=><option key={t}>{t}</option>)}</select>
                       :c.key==="status"?<select className="ci" value={row.status} onChange={e=>update(i,"status",e.target.value)}>{STATUS.map(s=><option key={s}>{s}</option>)}</select>
                       :(c.key==="startDate"||c.key==="endDate")?<input type="date" className="ci" value={row[c.key]} onChange={e=>update(i,c.key,e.target.value)}/>
                       :(c.key==="estCost"||c.key==="actualCost")?<input type="number" className="ci" placeholder="0" value={row[c.key]} onChange={e=>update(i,c.key,e.target.value)}/>
@@ -327,6 +471,7 @@ function App() {
 
       <div className="footer">Data auto-saves to Google Sheets. Auto-refreshes every 30 seconds.</div>
 
+      {/* Google Sheets setup modal */}
       {showSetup&&(
         <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setShowSetup(false)}>
           <div className="modal">
@@ -338,6 +483,19 @@ function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Sign-up modal */}
+      {signupRow !== null && (
+        <SignupModal
+          project={signupRow.project}
+          currentVolunteers={signupRow.volunteers}
+          myName={myName}
+          onClose={()=>setSignupRowIndex(null)}
+          onSignUp={(name)=>handleSignUp(signupRowIndex, name)}
+          onLeave={()=>handleLeave(signupRowIndex, myName)}
+          onNameChange={handleNameChange}
+        />
       )}
     </div>
   );
