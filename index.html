@@ -147,6 +147,7 @@ const FREQUENCIES = ["Daily","Weekly","Bi-Weekly","Monthly"];
 const LS_RECURRING = "fac_recurring";
 const LS_ONEOFF = "fac_oneoff";
 const LS_MY_NAME = "fac_my_name";
+const LS_HISTORY = "fac_history";
 
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -188,23 +189,32 @@ function App() {
   const [loaded, setLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState("saving");
   const [myName, setMyName] = useState(()=>{ try{return localStorage.getItem(LS_MY_NAME)||"";}catch{return "";} });
+  const [history, setHistory] = useState(()=>{ try{ const s=localStorage.getItem(LS_HISTORY); return s?JSON.parse(s):[]; }catch{return [];} });
 
   // Modals
   const [showAddRecurring, setShowAddRecurring] = useState(false);
   const [showAddOneOff, setShowAddOneOff] = useState(false);
-  const [signupTarget, setSignupTarget] = useState(null); // {type:'recurring'|'oneoff', id}
-  const [editTarget, setEditTarget] = useState(null); // {type, item}
+  const [showHistory, setShowHistory] = useState(false);
+  const [signupTarget, setSignupTarget] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
 
   const saveRef = useRef(null);
   const userChangedRef = useRef(false);
 
-  const saveToSheets = (r, o) => {
+  const saveToSheets = (r, o, h) => {
     setSyncStatus("saving");
     clearTimeout(saveRef.current);
     saveRef.current = setTimeout(()=>{
-      fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({recurring:r, oneoffs:o})})
+      fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({recurring:r, oneoffs:o, history:h})})
         .then(()=>setSyncStatus("ok")).catch(()=>setSyncStatus("err"));
     }, 1500);
+  };
+
+  const addHistoryEntry = (entry, currentHistory) => {
+    const next = [entry, ...currentHistory].slice(0, 500); // keep last 500 entries
+    setHistory(next);
+    try{localStorage.setItem(LS_HISTORY,JSON.stringify(next));}catch{}
+    return next;
   };
 
   const loadFromSheets = () => {
@@ -224,6 +234,10 @@ function App() {
           setOneoffs(data.oneoffs);
           try{localStorage.setItem(LS_ONEOFF,JSON.stringify(data.oneoffs));}catch{}
         } else if(localO.length>0){ setOneoffs(localO); }
+        if(data.history && data.history.length>0){
+          setHistory(data.history);
+          try{localStorage.setItem(LS_HISTORY,JSON.stringify(data.history));}catch{}
+        }
         setSyncStatus("ok");
         setLoaded(true);
       })
@@ -242,11 +256,12 @@ function App() {
     return ()=>clearInterval(interval);
   },[]);
 
-  const persist = (r, o) => {
+  const persist = (r, o, h) => {
+    const hist = h !== undefined ? h : history;
     userChangedRef.current = true;
     try{localStorage.setItem(LS_RECURRING,JSON.stringify(r));}catch{}
     try{localStorage.setItem(LS_ONEOFF,JSON.stringify(o));}catch{}
-    saveToSheets(r, o);
+    saveToSheets(r, o, hist);
   };
 
   const addRecurring = (item) => {
@@ -262,14 +277,18 @@ function App() {
     setRecurring(next); persist(next, oneoffs);
   };
   const markRecurringDone = (id) => {
-    const days = freqDays[recurring.find(r=>r.id===id)?.frequency] || 7;
+    const item = recurring.find(r=>r.id===id);
+    const days = freqDays[item?.frequency] || 7;
     const next = recurring.map(r=>r.id!==id?r:{
-      ...r,
-      completedThisCycle: true,
-      missedLast: false,
+      ...r, completedThisCycle: true, missedLast: false,
       nextDue: toISO(addDays(today(), days))
     });
-    setRecurring(next); persist(next, oneoffs);
+    setRecurring(next);
+    const newHist = addHistoryEntry({
+      id: uid(), type:'recurring', title: item.title, location: item.location||'',
+      volunteers: item.volunteers, completedDate: toISO(today()), frequency: item.frequency||'Weekly'
+    }, history);
+    persist(next, oneoffs, newHist);
   };
 
   const addOneOff = (item) => {
@@ -285,8 +304,14 @@ function App() {
     setOneoffs(next); persist(recurring, next);
   };
   const markDone = (id) => {
-    const next = oneoffs.map(o=>o.id===id?{...o,done:true}:o);
-    setOneoffs(next); persist(recurring, next);
+    const item = oneoffs.find(o=>o.id===id);
+    const next = oneoffs.map(o=>o.id===id?{...o,done:true,completedDate:toISO(today())}:o);
+    setOneoffs(next);
+    const newHist = addHistoryEntry({
+      id: uid(), type:'repair', title: item.title, location: item.location||'',
+      volunteers: item.volunteers, completedDate: toISO(today()), addedBy: item.addedBy||''
+    }, history);
+    persist(recurring, next, newHist);
   };
 
   const handleVolunteerSignup = (type, id, name) => {
@@ -357,6 +382,7 @@ function App() {
         <div className="header-right">
           <span className={"sync-badge "+syncClass}>{syncLabel}</span>
           <button className="btn btn-gray" onClick={loadFromSheets}>🔄 Reload</button>
+          <button className="btn btn-navy" onClick={()=>setShowHistory(true)}>📋 History</button>
         </div>
       </div>
 
@@ -487,6 +513,11 @@ function App() {
           onSignup={(name)=>{ handleNameSave(name); handleVolunteerSignup(signupTarget.type, signupTarget.id, name); }}
           onRemove={(name)=>handleVolunteerRemove(signupTarget.type, signupTarget.id, name)}
         />
+      )}
+
+      {/* History Modal */}
+      {showHistory && (
+        <HistoryModal history={history} onClose={()=>setShowHistory(false)} />
       )}
     </div>
   );
@@ -657,6 +688,93 @@ function SignupModal({item, myName, onClose, onSignup, onRemove}) {
         )}
 
         <button className="big-join-btn" style={{marginTop:12}} onClick={onClose}>Close</button>
+      </div>
+    </div>
+  );
+}
+
+function HistoryModal({history, onClose}) {
+  const [tab, setTab] = useState('completed');
+
+  // Build volunteer summary: name -> [{title, date, type}]
+  const volMap = {};
+  history.forEach(entry => {
+    (entry.volunteers||[]).forEach(name => {
+      if(!volMap[name]) volMap[name] = [];
+      volMap[name].push({title: entry.title, date: entry.completedDate, type: entry.type});
+    });
+  });
+  const volList = Object.entries(volMap).sort((a,b)=>b[1].length-a[1].length);
+
+  const completed = [...history].sort((a,b)=>b.completedDate?.localeCompare(a.completedDate||'')||0);
+
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{width:'min(580px,100%)',padding:'0'}}>
+        {/* Modal header */}
+        <div style={{padding:'20px 24px 0',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <h2 style={{fontSize:'1.1rem',fontWeight:800,color:'var(--navy)'}}>📋 History</h2>
+          <button onClick={onClose} style={{background:'none',border:'none',fontSize:'1.4rem',color:'#94a3b8',cursor:'pointer',lineHeight:1}}>×</button>
+        </div>
+        {/* Tabs */}
+        <div style={{display:'flex',gap:0,padding:'12px 24px 0',borderBottom:'1px solid var(--border)'}}>
+          {[['completed','✅ Completed Tasks & Repairs'],['volunteers','👤 Past Volunteers']].map(([key,label])=>(
+            <button key={key} onClick={()=>setTab(key)} style={{
+              background:'none',border:'none',padding:'8px 16px',fontFamily:'DM Sans,sans-serif',
+              fontSize:'.82rem',fontWeight:700,cursor:'pointer',borderBottom: tab===key?'2px solid var(--navy)':'2px solid transparent',
+              color: tab===key?'var(--navy)':'var(--muted)',transition:'all .15s'
+            }}>{label}</button>
+          ))}
+        </div>
+        {/* Tab content */}
+        <div style={{padding:'16px 24px 24px',maxHeight:'60vh',overflowY:'auto'}}>
+          {tab==='completed' && (
+            completed.length===0
+              ? <div className="empty"><div className="empty-icon">📭</div>No completed tasks or repairs yet.</div>
+              : completed.map(entry=>(
+                <div key={entry.id} style={{borderBottom:'1px solid var(--border)',paddingBottom:'12px',marginBottom:'12px'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                    <span style={{fontWeight:700,fontSize:'.88rem',color:'var(--navy)',flex:1}}>{entry.title}</span>
+                    <span className={`tag ${entry.type==='repair'?'tag-priority-low':'tag-freq'}`}>
+                      {entry.type==='repair'?'🔧 Repair':'🔁 '+entry.frequency}
+                    </span>
+                    <span style={{fontSize:'.72rem',color:'var(--muted)',fontWeight:600}}>
+                      ✅ {entry.completedDate ? fmtDate(entry.completedDate) : '—'}
+                    </span>
+                  </div>
+                  {entry.location && <div style={{fontSize:'.75rem',color:'var(--muted)',marginTop:'3px'}}>📍 {entry.location}</div>}
+                  {entry.volunteers?.length>0 && (
+                    <div style={{marginTop:'5px',display:'flex',flexWrap:'wrap',gap:'4px'}}>
+                      {entry.volunteers.map((v,i)=><span key={i} className="vol-tag" style={{fontSize:'.68rem'}}>👤 {v}</span>)}
+                    </div>
+                  )}
+                  {!entry.volunteers?.length && <div style={{fontSize:'.72rem',color:'#94a3b8',marginTop:'4px',fontStyle:'italic'}}>No volunteers recorded</div>}
+                </div>
+              ))
+          )}
+          {tab==='volunteers' && (
+            volList.length===0
+              ? <div className="empty"><div className="empty-icon">🙋</div>No volunteer history yet.</div>
+              : volList.map(([name, entries])=>(
+                <div key={name} style={{borderBottom:'1px solid var(--border)',paddingBottom:'12px',marginBottom:'12px'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'6px'}}>
+                    <span style={{fontWeight:700,fontSize:'.9rem',color:'var(--navy)'}}>👤 {name}</span>
+                    <span style={{fontSize:'.72rem',color:'var(--muted)',background:'#f1f5f9',borderRadius:'999px',padding:'2px 8px',fontWeight:600}}>
+                      {entries.length} contribution{entries.length!==1?'s':''}
+                    </span>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
+                    {entries.map((e,i)=>(
+                      <div key={i} style={{fontSize:'.75rem',color:'var(--muted)',display:'flex',gap:'8px'}}>
+                        <span style={{color:'#94a3b8'}}>{e.date ? fmtDate(e.date) : '—'}</span>
+                        <span>{e.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+          )}
+        </div>
       </div>
     </div>
   );
