@@ -6,7 +6,674 @@
   <title>FAC – Friday Afternoon Club | JP2 Independent School</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.mi<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FAC – Friday Afternoon Club | JP2 Independent School</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --navy:#1a2e4a;--navy2:#243856;--orange:#f97316;--orange2:#ea580c;
+      --green:#16a34a;--green2:#15803d;--red:#dc2626;--red2:#b91c1c;
+      --amber:#d97706;--blue:#1d4ed8;
+      --bg:#f0f4f8;--white:#ffffff;
+      --border:#dde3ec;--text:#1a2e4a;--muted:#64748b;--light:#f8fafc;
+      --shadow:0 2px 8px rgba(0,0,0,.08);--shadow-lg:0 8px 32px rgba(0,0,0,.12);
+    }
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;padding:16px;color:var(--text)}
+
+    /* HEADER */
+    .header{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);color:white;border-radius:16px;padding:22px 28px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:var(--shadow-lg)}
+    .header-left h1{font-size:1.5rem;font-weight:800;letter-spacing:-.01em}
+    .header-left .sub{color:#93c5fd;font-size:.82rem;margin-top:3px;font-weight:500}
+    .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .sync-badge{font-size:.75rem;font-weight:700;padding:5px 12px;border-radius:20px;white-space:nowrap}
+    .sync-ok{background:#16a34a;color:#fff}
+    .sync-saving{background:#d97706;color:#fff}
+    .sync-err{background:#dc2626;color:#fff}
+
+    /* STAT BAR */
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px}
+    .stat{background:var(--white);border-radius:12px;padding:14px 16px;border:1px solid var(--border);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px}
+    .stat-val{font-size:1.7rem;font-weight:800;color:var(--navy);line-height:1}
+    .stat-val.orange{color:var(--orange)}
+    .stat-val.green{color:var(--green)}
+    .stat-val.red{color:var(--red)}
+    .stat-val.blue{color:var(--blue)}
+    .stat-lbl{font-size:.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+
+    /* BUTTONS */
+    .btn{border:none;border-radius:9px;padding:9px 18px;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .18s;font-family:'DM Sans',sans-serif;color:white;display:inline-flex;align-items:center;gap:6px}
+    .btn-navy{background:var(--navy)}.btn-navy:hover{background:var(--navy2)}
+    .btn-orange{background:var(--orange)}.btn-orange:hover{background:var(--orange2)}
+    .btn-green{background:var(--green)}.btn-green:hover{background:var(--green2)}
+    .btn-gray{background:#94a3b8}.btn-gray:hover{background:#64748b}
+    .btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}.btn-ghost:hover{border-color:#94a3b8;color:var(--text)}
+    .btn-sm{padding:5px 12px;font-size:.75rem;border-radius:7px}
+    .btn-danger{background:transparent;color:var(--red);border:1.5px solid #fca5a5;font-weight:700}.btn-danger:hover{background:#fee2e2}
+
+    /* SECTION */
+    .section{background:var(--white);border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+    .section-header{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border-bottom:1px solid var(--border)}
+    .section-title{font-size:1rem;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:8px}
+    .section-title .badge{font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:var(--muted);border:1px solid var(--border)}
+    .section-desc{font-size:.75rem;color:var(--muted);margin-top:2px;font-weight:500}
+
+    /* CARDS */
+    .cards{padding:16px;display:flex;flex-direction:column;gap:10px}
+    .card{border:1.5px solid var(--border);border-radius:11px;padding:14px 16px;background:var(--light);transition:border-color .15s}
+    .card:hover{border-color:#93c5fd}
+    .card.urgent{border-color:#fca5a5;background:#fff5f5}
+    .card.high{border-color:#fed7aa;background:#fff7ed}
+    .card.done{border-color:#bbf7d0;background:#f0fdf4;opacity:.75}
+    .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .card-title{font-size:.92rem;font-weight:700;color:var(--navy);flex:1}
+    .card-title.done-text{text-decoration:line-through;color:var(--muted)}
+    .card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;align-items:center}
+    .tag{font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
+    .tag-skill{background:#dbeafe;color:#1e40af}
+    .tag-location{background:#f3e8ff;color:#7c3aed}
+    .tag-priority-low{background:#dcfce7;color:#15803d}
+    .tag-priority-medium{background:#fef9c3;color:#92400e}
+    .tag-priority-high{background:#fed7aa;color:#c2410c}
+    .tag-priority-urgent{background:#fee2e2;color:#b91c1c}
+    .tag-done{background:#dcfce7;color:#15803d}
+    .card-notes{font-size:.78rem;color:var(--muted);margin-top:7px;line-height:1.5;font-style:italic}
+    .card-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:8px}
+    .volunteers-list{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+    .vol-tag{display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;border-radius:999px;padding:3px 10px;font-size:.72rem;font-weight:600}
+    .vol-tag.me{background:#dcfce7;color:#15803d}
+    .no-vols{font-size:.75rem;color:#94a3b8;font-style:italic}
+    .card-actions{display:flex;gap:6px;flex-wrap:wrap}
+
+    .card.missed{border-color:#fbbf24;background:#fffbeb}
+    .missed-banner{background:#fef3c7;border-radius:7px;padding:6px 10px;font-size:.72rem;font-weight:700;color:#92400e;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+    .tag-freq{background:#e0f2fe;color:#0369a1}
+    .tag-due{background:#f1f5f9;color:#475569}
+    .tag-overdue{background:#fee2e2;color:#b91c1c}
+
+    /* EMPTY STATE */
+    .empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:.85rem}
+    .empty-icon{font-size:2rem;margin-bottom:8px}
+
+    /* MODAL */
+    .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
+    .modal{background:white;border-radius:16px;padding:28px;width:min(480px,100%);box-shadow:var(--shadow-lg);max-height:90vh;overflow-y:auto}
+    .modal h2{font-size:1.1rem;font-weight:800;color:var(--navy);margin-bottom:4px}
+    .modal .modal-sub{font-size:.8rem;color:var(--muted);margin-bottom:20px}
+    .field{margin-bottom:14px}
+    .field label{display:block;font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+    .field input,.field select,.field textarea{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:.85rem;font-family:'DM Sans',sans-serif;outline:none;color:var(--text);background:white;transition:border-color .15s}
+    .field input:focus,.field select:focus,.field textarea:focus{border-color:#60a5fa;box-shadow:0 0 0 3px #bfdbfe44}
+    .field textarea{resize:vertical;min-height:70px}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .modal-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+
+    /* SIGNUP MODAL */
+    .signup-modal{background:white;border-radius:16px;padding:28px;width:min(420px,100%);box-shadow:var(--shadow-lg)}
+    .signup-modal .icon{font-size:2.2rem;text-align:center;margin-bottom:10px}
+    .signup-modal h2{text-align:center;font-size:1.1rem;font-weight:800;color:var(--navy);margin-bottom:4px}
+    .signup-modal .task-name{text-align:center;font-size:.9rem;color:var(--orange);font-weight:700;margin-bottom:18px;background:#fff7ed;border-radius:8px;padding:8px 12px}
+    .volunteer-input-row{display:flex;gap:8px;margin-bottom:10px}
+    .volunteer-input-row input{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:.85rem;font-family:'DM Sans',sans-serif;outline:none}
+    .volunteer-input-row input:focus{border-color:#60a5fa}
+    .current-vols{background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:16px}
+    .current-vols-title{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+    .vol-remove{display:inline-flex;align-items:center;gap:5px;background:#dbeafe;color:#1e40af;border-radius:999px;padding:3px 8px 3px 10px;font-size:.72rem;font-weight:600;margin:2px}
+    .vol-remove button{background:none;border:none;color:#ef4444;cursor:pointer;font-size:.85rem;font-weight:700;padding:0;line-height:1}
+    .big-join-btn{width:100%;padding:12px;font-size:.95rem;font-weight:800;border-radius:10px;border:none;cursor:pointer;color:white;background:var(--green);font-family:'DM Sans',sans-serif;transition:background .2s;margin-bottom:8px}
+    .big-join-btn:hover{background:var(--green2)}
+    .cancel-link{display:block;text-align:center;font-size:.78rem;color:var(--muted);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;width:100%}
+    .cancel-link:hover{color:var(--text)}
+
+    /* MARK DONE CONFIRM */
+    .done-confirmed{background:#dcfce7;border-radius:10px;padding:10px 14px;font-size:.8rem;color:#15803d;font-weight:600;margin-bottom:12px;text-align:center}
+
+    .loading{text-align:center;padding:60px;color:var(--muted);font-size:.9rem}
+    .footer{text-align:center;font-size:.7rem;color:#94a3b8;margin-top:14px;padding-bottom:8px}
+
+    @media(max-width:600px){.field-row{grid-template-columns:1fr}.header{padding:16px 18px}}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState, useEffect, useRef} = React;
+
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypnsM1fmD7lshJkCt58pBwTIWdvFH-t2jhG2WD32zgihKk-g_DwUn-V8JCSLsCsdfbdQ/exec";
+
+const SKILLS = ["Any","Carpenter","Plumber","Electrician","Concrete","Roofing","Construction","IT","Landscaping","Grounds Keeping","Misc"];
+const PRIORITIES = ["Low","Medium","High","Urgent"];
+const FREQUENCIES = ["Daily","Weekly","Bi-Weekly","Monthly"];
+const LS_RECURRING = "fac_recurring";
+const LS_ONEOFF = "fac_oneoff";
+const LS_MY_NAME = "fac_my_name";
+
+const uid = () => Math.random().toString(36).slice(2,9);
+
+// Date helpers
+const today = () => { const d=new Date(); d.setHours(0,0,0,0); return d; };
+const parseDate = (s) => { if(!s) return null; const [y,m,d]=s.split('-'); const dt=new Date(parseInt(y),parseInt(m)-1,parseInt(d)); return isNaN(dt)?null:dt; };
+const fmtDate = (d) => { if(!d) return ''; const dt = d instanceof Date ? d : parseDate(d); if(!dt) return ''; return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
+const addDays = (d,n) => { const dt=new Date(d); dt.setDate(dt.getDate()+n); return dt; };
+const toISO = (d) => { const dt = d instanceof Date ? d : new Date(d); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; };
+const freqDays = {Daily:1, Weekly:7, 'Bi-Weekly':14, Monthly:30};
+
+// Advance a recurring task's due date if it has passed; flag as missed if not completed
+const advanceIfPast = (item) => {
+  if(!item.frequency || !item.nextDue) return item;
+  const due = parseDate(item.nextDue);
+  if(!due) return item;
+  const t = today();
+  if(due >= t) return item; // not past yet
+  // Advance until next due date is in the future
+  const days = freqDays[item.frequency] || 7;
+  let next = new Date(due);
+  let wasMissed = !item.completedThisCycle;
+  while(next < t) next = addDays(next, days);
+  return {...item, nextDue: toISO(next), completedThisCycle: false, missedLast: wasMissed || item.missedLast};
+};
+
+const newRecurring = () => ({
+  id: uid(), title:"", location:"", skill:"Any", priority:"Medium", notes:"",
+  volunteers:[], frequency:"Weekly", nextDue: toISO(addDays(today(),7)),
+  completedThisCycle: false, missedLast: false
+});
+const newOneOff = () => ({
+  id: uid(), title:"", location:"", skill:"Any", priority:"Medium", notes:"", volunteers:[], done:false, addedBy:""
+});
+
+function App() {
+  const [recurring, setRecurring] = useState([]);
+  const [oneoffs, setOneoffs] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("saving");
+  const [myName, setMyName] = useState(()=>{ try{return localStorage.getItem(LS_MY_NAME)||"";}catch{return "";} });
+
+  // Modals
+  const [showAddRecurring, setShowAddRecurring] = useState(false);
+  const [showAddOneOff, setShowAddOneOff] = useState(false);
+  const [signupTarget, setSignupTarget] = useState(null); // {type:'recurring'|'oneoff', id}
+  const [editTarget, setEditTarget] = useState(null); // {type, item}
+
+  const saveRef = useRef(null);
+  const userChangedRef = useRef(false);
+
+  const saveToSheets = (r, o) => {
+    setSyncStatus("saving");
+    clearTimeout(saveRef.current);
+    saveRef.current = setTimeout(()=>{
+      fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({recurring:r, oneoffs:o})})
+        .then(()=>setSyncStatus("ok")).catch(()=>setSyncStatus("err"));
+    }, 1500);
+  };
+
+  const loadFromSheets = () => {
+    setSyncStatus("saving");
+    let localR=[], localO=[];
+    try{ const s=localStorage.getItem(LS_RECURRING); if(s) localR=JSON.parse(s); }catch{}
+    try{ const s=localStorage.getItem(LS_ONEOFF); if(s) localO=JSON.parse(s); }catch{}
+    fetch(SCRIPT_URL+"?nocache="+Date.now()+"&r="+Math.random(),{cache:"no-store"})
+      .then(r=>r.json())
+      .then(data=>{
+        if(data.recurring && data.recurring.length>0){
+          const advanced = data.recurring.map(advanceIfPast);
+          setRecurring(advanced);
+          try{localStorage.setItem(LS_RECURRING,JSON.stringify(advanced));}catch{}
+        } else if(localR.length>0){ setRecurring(localR.map(advanceIfPast)); }
+        if(data.oneoffs && data.oneoffs.length>0){
+          setOneoffs(data.oneoffs);
+          try{localStorage.setItem(LS_ONEOFF,JSON.stringify(data.oneoffs));}catch{}
+        } else if(localO.length>0){ setOneoffs(localO); }
+        setSyncStatus("ok");
+        setLoaded(true);
+      })
+      .catch(()=>{
+        if(localR.length>0) setRecurring(localR.map(advanceIfPast));
+        if(localO.length>0) setOneoffs(localO);
+        setSyncStatus("err");
+        setLoaded(true);
+      });
+  };
+
+  useEffect(()=>{ loadFromSheets(); },[]);
+
+  useEffect(()=>{
+    const interval=setInterval(()=>{ if(!userChangedRef.current) loadFromSheets(); },30000);
+    return ()=>clearInterval(interval);
+  },[]);
+
+  const persist = (r, o) => {
+    userChangedRef.current = true;
+    try{localStorage.setItem(LS_RECURRING,JSON.stringify(r));}catch{}
+    try{localStorage.setItem(LS_ONEOFF,JSON.stringify(o));}catch{}
+    saveToSheets(r, o);
+  };
+
+  const addRecurring = (item) => {
+    const next = [...recurring, {...item, id:uid()}];
+    setRecurring(next); persist(next, oneoffs);
+  };
+  const updateRecurring = (item) => {
+    const next = recurring.map(r=>r.id===item.id?item:r);
+    setRecurring(next); persist(next, oneoffs);
+  };
+  const deleteRecurring = (id) => {
+    const next = recurring.filter(r=>r.id!==id);
+    setRecurring(next); persist(next, oneoffs);
+  };
+  const markRecurringDone = (id) => {
+    const days = freqDays[recurring.find(r=>r.id===id)?.frequency] || 7;
+    const next = recurring.map(r=>r.id!==id?r:{
+      ...r,
+      completedThisCycle: true,
+      missedLast: false,
+      nextDue: toISO(addDays(today(), days))
+    });
+    setRecurring(next); persist(next, oneoffs);
+  };
+
+  const addOneOff = (item) => {
+    const next = [...oneoffs, {...item, id:uid(), done:false}];
+    setOneoffs(next); persist(recurring, next);
+  };
+  const updateOneOff = (item) => {
+    const next = oneoffs.map(o=>o.id===item.id?item:o);
+    setOneoffs(next); persist(recurring, next);
+  };
+  const deleteOneOff = (id) => {
+    const next = oneoffs.filter(o=>o.id!==id);
+    setOneoffs(next); persist(recurring, next);
+  };
+  const markDone = (id) => {
+    const next = oneoffs.map(o=>o.id===id?{...o,done:true}:o);
+    setOneoffs(next); persist(recurring, next);
+  };
+
+  const handleVolunteerSignup = (type, id, name) => {
+    if(!name.trim()) return;
+    if(type==='recurring'){
+      const next = recurring.map(r=>{
+        if(r.id!==id) return r;
+        if(r.volunteers.some(v=>v.toLowerCase()===name.trim().toLowerCase())) return r;
+        return {...r, volunteers:[...r.volunteers, name.trim()]};
+      });
+      setRecurring(next); persist(next, oneoffs);
+    } else {
+      const next = oneoffs.map(o=>{
+        if(o.id!==id) return o;
+        if(o.volunteers.some(v=>v.toLowerCase()===name.trim().toLowerCase())) return o;
+        return {...o, volunteers:[...o.volunteers, name.trim()]};
+      });
+      setOneoffs(next); persist(recurring, next);
+    }
+  };
+
+  const handleVolunteerRemove = (type, id, name) => {
+    if(type==='recurring'){
+      const next = recurring.map(r=>r.id!==id?r:{...r,volunteers:r.volunteers.filter(v=>v!==name)});
+      setRecurring(next); persist(next, oneoffs);
+    } else {
+      const next = oneoffs.map(o=>o.id!==id?o:{...o,volunteers:o.volunteers.filter(v=>v!==name)});
+      setOneoffs(next); persist(recurring, next);
+    }
+  };
+
+  const handleNameSave = (name) => {
+    setMyName(name);
+    try{localStorage.setItem(LS_MY_NAME,name);}catch{}
+  };
+
+  // Stats
+  const totalVols = new Set([
+    ...recurring.flatMap(r=>r.volunteers),
+    ...oneoffs.filter(o=>!o.done).flatMap(o=>o.volunteers)
+  ]).size;
+  const openRepairs = oneoffs.filter(o=>!o.done).length;
+  const urgentCount = [...recurring,...oneoffs.filter(o=>!o.done)].filter(i=>i.priority==="Urgent").length;
+  const coveredRecurring = recurring.filter(r=>r.volunteers.length>0).length;
+
+  const syncLabel = {ok:"✔ Synced",saving:"⏳ Saving...",err:"⚠ Sync Error"}[syncStatus]||"⏳";
+  const syncClass = {ok:"sync-ok",saving:"sync-saving",err:"sync-err"}[syncStatus]||"sync-saving";
+
+  if(!loaded) return (
+    <div>
+      <div className="header"><div className="header-left"><h1>⚒ Friday Afternoon Club</h1><div className="sub">JP2 Independent School — Volunteer Sign-Up</div></div></div>
+      <div className="loading">⏳ Loading from Google Sheets...</div>
+    </div>
+  );
+
+  const signupItem = signupTarget
+    ? (signupTarget.type==='recurring' ? recurring.find(r=>r.id===signupTarget.id) : oneoffs.find(o=>o.id===signupTarget.id))
+    : null;
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="header">
+        <div className="header-left">
+          <h1>⚒ Friday Afternoon Club</h1>
+          <div className="sub">JP2 Independent School — Volunteer Sign-Up Sheet</div>
+        </div>
+        <div className="header-right">
+          <span className={"sync-badge "+syncClass}>{syncLabel}</span>
+          <button className="btn btn-gray" onClick={loadFromSheets}>🔄 Reload</button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="stats">
+        <div className="stat"><div className="stat-val blue">{recurring.length}</div><div className="stat-lbl">Recurring Tasks</div></div>
+        <div className="stat"><div className="stat-val orange">{openRepairs}</div><div className="stat-lbl">Open Repairs</div></div>
+        <div className="stat"><div className="stat-val green">{coveredRecurring}/{recurring.length}</div><div className="stat-lbl">Tasks Covered</div></div>
+        <div className="stat"><div className="stat-val green">{totalVols}</div><div className="stat-lbl">Total Volunteers</div></div>
+        {urgentCount>0 && <div className="stat"><div className="stat-val red">{urgentCount}</div><div className="stat-lbl">Urgent Items</div></div>}
+        <div className="stat"><div className="stat-val" style={{color:'#94a3b8'}}>{oneoffs.filter(o=>o.done).length}</div><div className="stat-lbl">Repairs Done</div></div>
+      </div>
+
+      {/* RECURRING SECTION */}
+      <div className="section">
+        <div className="section-header">
+          <div>
+            <div className="section-title">🔁 Recurring Tasks <span className="badge">{recurring.length}</span></div>
+            <div className="section-desc">Ongoing maintenance — mowing, cleaning, inspections. These stay on the list.</div>
+          </div>
+          <button className="btn btn-navy" onClick={()=>setShowAddRecurring(true)}>+ Add Task</button>
+        </div>
+        <div className="cards">
+          {recurring.length===0 && <div className="empty"><div className="empty-icon">🌿</div>No recurring tasks yet. Add one to get started!</div>}
+          {recurring.map(item=>(
+            <TaskCard key={item.id} item={item} type="recurring"
+              onSignup={()=>setSignupTarget({type:'recurring',id:item.id})}
+              onEdit={()=>setEditTarget({type:'recurring',item})}
+              onDelete={()=>deleteRecurring(item.id)}
+              onMarkDone={()=>markRecurringDone(item.id)}
+              onRemoveVol={(name)=>handleVolunteerRemove('recurring',item.id,name)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* ONE-OFF SECTION */}
+      <div className="section">
+        <div className="section-header">
+          <div>
+            <div className="section-title">🔧 One-Off Repairs <span className="badge">{openRepairs} open</span></div>
+            <div className="section-desc">Things that need fixing once. Mark as done when complete — anyone can add a request.</div>
+          </div>
+          <button className="btn btn-orange" onClick={()=>setShowAddOneOff(true)}>+ Request Repair</button>
+        </div>
+        <div className="cards">
+          {oneoffs.filter(o=>!o.done).length===0 && oneoffs.filter(o=>o.done).length===0 &&
+            <div className="empty"><div className="empty-icon">🔧</div>No repairs requested yet. Something need fixing?</div>
+          }
+          {/* Open repairs */}
+          {oneoffs.filter(o=>!o.done).map(item=>(
+            <TaskCard key={item.id} item={item} type="oneoff"
+              onSignup={()=>setSignupTarget({type:'oneoff',id:item.id})}
+              onEdit={()=>setEditTarget({type:'oneoff',item})}
+              onDelete={()=>deleteOneOff(item.id)}
+              onMarkDone={()=>markDone(item.id)}
+              onRemoveVol={(name)=>handleVolunteerRemove('oneoff',item.id,name)}
+            />
+          ))}
+          {/* Completed repairs — collapsed */}
+          {oneoffs.filter(o=>o.done).length>0 && (
+            <details style={{marginTop:4}}>
+              <summary style={{cursor:'pointer',fontSize:'.78rem',color:'var(--muted)',fontWeight:600,padding:'8px 4px',userSelect:'none'}}>
+                ✅ {oneoffs.filter(o=>o.done).length} completed repair{oneoffs.filter(o=>o.done).length!==1?'s':''} — click to view
+              </summary>
+              {oneoffs.filter(o=>o.done).map(item=>(
+                <TaskCard key={item.id} item={item} type="oneoff" isDone
+                  onDelete={()=>deleteOneOff(item.id)}
+                  onRemoveVol={()=>{}}
+                />
+              ))}
+            </details>
+          )}
+        </div>
+      </div>
+
+      <div className="footer">Auto-saves to Google Sheets · Refreshes every 30 seconds · JP2 Independent School — FAC</div>
+
+      {/* Add Recurring Modal */}
+      {showAddRecurring && (
+        <ItemFormModal
+          title="Add Recurring Task"
+          sub="This will stay on the list until manually removed."
+          initial={newRecurring()}
+          onSave={(item)=>{ addRecurring(item); setShowAddRecurring(false); }}
+          onClose={()=>setShowAddRecurring(false)}
+          showAddedBy={false}
+          isRecurring={true}
+        />
+      )}
+
+      {/* Add One-Off Modal */}
+      {showAddOneOff && (
+        <ItemFormModal
+          title="Request a Repair"
+          sub="Describe what needs fixing. Anyone can submit a request."
+          initial={newOneOff()}
+          onSave={(item)=>{ addOneOff(item); setShowAddOneOff(false); }}
+          onClose={()=>setShowAddOneOff(false)}
+          showAddedBy={true}
+          isRecurring={false}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editTarget && (
+        <ItemFormModal
+          title={"Edit " + (editTarget.type==='recurring'?'Task':'Repair')}
+          sub="Update the details below."
+          initial={editTarget.item}
+          onSave={(item)=>{
+            if(editTarget.type==='recurring') updateRecurring(item);
+            else updateOneOff(item);
+            setEditTarget(null);
+          }}
+          onClose={()=>setEditTarget(null)}
+          showAddedBy={editTarget.type==='oneoff'}
+          isRecurring={editTarget.type==='recurring'}
+        />
+      )}
+
+      {/* Sign-up Modal */}
+      {signupTarget && signupItem && (
+        <SignupModal
+          item={signupItem}
+          myName={myName}
+          onClose={()=>setSignupTarget(null)}
+          onSignup={(name)=>{ handleNameSave(name); handleVolunteerSignup(signupTarget.type, signupTarget.id, name); }}
+          onRemove={(name)=>handleVolunteerRemove(signupTarget.type, signupTarget.id, name)}
+        />
+      )}
+    </div>
+  );
+}
+
+function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, onRemoveVol}) {
+  const priorityClass = isDone ? 'done' : item.priority.toLowerCase();
+  const isMissed = type==='recurring' && item.missedLast && !item.completedThisCycle;
+  const due = type==='recurring' && item.nextDue ? parseDate(item.nextDue) : null;
+  const dueStr = due ? fmtDate(due) : null;
+  const isOverdue = due && due < today();
+
+  return (
+    <div className={`card ${priorityClass}${isMissed?' missed':''}`}>
+      {isMissed && (
+        <div className="missed-banner">⚠ Missed last cycle — mark as done when completed to clear this</div>
+      )}
+      <div className="card-top">
+        <div style={{flex:1}}>
+          <div className={"card-title"+(isDone?" done-text":"")}>{item.title||<span style={{color:'#94a3b8',fontStyle:'italic'}}>Untitled</span>}</div>
+          <div className="card-meta">
+            {item.priority && !isDone && <span className={`tag tag-priority-${item.priority.toLowerCase()}`}>{item.priority==='Urgent'?'🚨 ':'⚑ '}{item.priority}</span>}
+            {isDone && <span className="tag tag-done">✅ Done</span>}
+            {type==='recurring' && item.skill && item.skill!=='Any' && <span className="tag tag-skill">🛠 {item.skill}</span>}
+            {item.location && <span className="tag tag-location">📍 {item.location}</span>}
+            {item.addedBy && <span className="tag" style={{background:'#f1f5f9',color:'var(--muted)'}}>Requested by {item.addedBy}</span>}
+            {type==='recurring' && item.frequency && (
+              <span className="tag tag-freq">🔁 {item.frequency}</span>
+            )}
+            {type==='recurring' && dueStr && (
+              <span className={`tag ${isOverdue?'tag-overdue':'tag-due'}`}>
+                {isOverdue?'⏰ Overdue':'📅 Due'} {dueStr}
+              </span>
+            )}
+          </div>
+          {item.notes && <div className="card-notes">"{item.notes}"</div>}
+        </div>
+      </div>
+      <div className="card-bottom">
+        <div className="volunteers-list">
+          {item.volunteers.length===0
+            ? <span className="no-vols">{isDone?'—':'No volunteers yet — be the first!'}</span>
+            : item.volunteers.map((v,i)=>(
+              <span key={i} className="vol-tag">
+                👤 {v}
+                {!isDone && <button onClick={()=>onRemoveVol(v)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontWeight:700,fontSize:'.8rem',marginLeft:2,lineHeight:1}}>×</button>}
+              </span>
+            ))
+          }
+        </div>
+        {!isDone && (
+          <div className="card-actions">
+            {onSignup && <button className="btn btn-green btn-sm" onClick={onSignup}>✋ Volunteer</button>}
+            {type==='recurring' && onMarkDone && <button className="btn btn-sm" style={{background:'#f0fdf4',color:'#15803d',border:'1.5px solid #86efac',fontWeight:700}} onClick={onMarkDone}>✅ Done This Cycle</button>}
+            {type==='oneoff' && onMarkDone && <button className="btn btn-sm" style={{background:'#f0fdf4',color:'#15803d',border:'1.5px solid #86efac',fontWeight:700}} onClick={onMarkDone}>✅ Mark Fixed</button>}
+            {onEdit && <button className="btn btn-ghost btn-sm" onClick={onEdit}>✏️ Edit</button>}
+            {onDelete && <button className="btn btn-danger btn-sm" onClick={()=>{ if(window.confirm('Remove this item?')) onDelete(); }}>🗑</button>}
+          </div>
+        )}
+        {isDone && onDelete && (
+          <button className="btn btn-danger btn-sm" onClick={()=>{ if(window.confirm('Remove this completed repair?')) onDelete(); }}>🗑 Remove</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ItemFormModal({title, sub, initial, onSave, onClose, showAddedBy, isRecurring}) {
+  const [form, setForm] = useState({...initial});
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <h2>{title}</h2>
+        <div className="modal-sub">{sub}</div>
+        <div className="field">
+          <label>Title / Description *</label>
+          <input placeholder="e.g. Mow the back field, Fix broken door handle..." value={form.title} onChange={e=>set('title',e.target.value)} autoFocus/>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label>Location</label>
+            <input placeholder="e.g. Main Building, Field..." value={form.location} onChange={e=>set('location',e.target.value)}/>
+          </div>
+          <div className="field">
+            <label>Priority</label>
+            <select value={form.priority} onChange={e=>set('priority',e.target.value)}>
+              {["Low","Medium","High","Urgent"].map(p=><option key={p}>{p}</option>)}
+            </select>
+          </div>
+        </div>
+        {isRecurring && (
+          <div className="field-row">
+            <div className="field">
+              <label>Frequency</label>
+              <select value={form.frequency||'Weekly'} onChange={e=>set('frequency',e.target.value)}>
+                {["Daily","Weekly","Bi-Weekly","Monthly"].map(f=><option key={f}>{f}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Next Due Date</label>
+              <input type="date" value={form.nextDue||''} onChange={e=>set('nextDue',e.target.value)}/>
+            </div>
+          </div>
+        )}
+        {showAddedBy && (
+          <div className="field">
+            <label>Requested By</label>
+            <input placeholder="Your name (optional)" value={form.addedBy||''} onChange={e=>set('addedBy',e.target.value)}/>
+          </div>
+        )}
+        <div className="field">
+          <label>Notes</label>
+          <textarea placeholder="Any extra details, context, or instructions..." value={form.notes} onChange={e=>set('notes',e.target.value)}/>
+        </div>
+        <div className="modal-btns">
+          <button className="btn btn-gray" onClick={onClose}>Cancel</button>
+          <button className="btn btn-green" onClick={()=>{ if(!form.title.trim()) return alert('Please enter a title.'); onSave(form); }}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SignupModal({item, myName, onClose, onSignup, onRemove}) {
+  const [nameInput, setNameInput] = useState(myName||"");
+  const [added, setAdded] = useState(false);
+
+  const handleAdd = () => {
+    if(!nameInput.trim()) return;
+    onSignup(nameInput.trim());
+    setNameInput("");
+    setAdded(true);
+  };
+
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="signup-modal">
+        <div style={{display:'flex',justifyContent:'flex-end'}}>
+          <button onClick={onClose} style={{background:'none',border:'none',fontSize:'1.4rem',color:'#94a3b8',cursor:'pointer',lineHeight:1}}>×</button>
+        </div>
+        <div className="icon">✋</div>
+        <h2>Volunteer for this task</h2>
+        <div className="task-name">{item.title}</div>
+
+        <div className="volunteer-input-row">
+          <input
+            placeholder="Enter name and click Add"
+            value={nameInput}
+            onChange={e=>{ setNameInput(e.target.value); setAdded(false); }}
+            onKeyDown={e=>e.key==="Enter"&&handleAdd()}
+            autoFocus
+          />
+          <button className="btn btn-green btn-sm" onClick={handleAdd}>Add</button>
+        </div>
+        {added && <div style={{fontSize:'.75rem',color:'var(--green)',fontWeight:600,marginBottom:8,textAlign:'center'}}>✔ Added! You can add more names or close.</div>}
+
+        {item.volunteers.length>0 && (
+          <div className="current-vols">
+            <div className="current-vols-title">Signed up ({item.volunteers.length})</div>
+            {item.volunteers.map((v,i)=>(
+              <span key={i} className="vol-remove">
+                👤 {v}
+                <button onClick={()=>onRemove(v)} title="Remove">×</button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <button className="big-join-btn" style={{marginTop:12}} onClick={onClose}>Close</button>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
+n.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
