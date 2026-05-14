@@ -7,109 +7,124 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;min-height:100vh;padding:16px}
-    h1{font-size:1.5rem;font-weight:700;letter-spacing:.03em}
-    .subtitle{color:#bfdbfe;font-size:.85rem;margin-top:3px}
-    .header{background:#1e3a8a;color:white;border-radius:12px;padding:20px 24px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:0 2px 8px #0002}
+    :root{
+      --navy:#1a2e4a;--navy2:#243856;--orange:#f97316;--orange2:#ea580c;
+      --green:#16a34a;--green2:#15803d;--red:#dc2626;--red2:#b91c1c;
+      --amber:#d97706;--blue:#1d4ed8;
+      --bg:#f0f4f8;--white:#ffffff;
+      --border:#dde3ec;--text:#1a2e4a;--muted:#64748b;--light:#f8fafc;
+      --shadow:0 2px 8px rgba(0,0,0,.08);--shadow-lg:0 8px 32px rgba(0,0,0,.12);
+    }
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;padding:16px;color:var(--text)}
+
+    /* HEADER */
+    .header{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);color:white;border-radius:16px;padding:22px 28px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:var(--shadow-lg)}
+    .header-left h1{font-size:1.5rem;font-weight:800;letter-spacing:-.01em}
+    .header-left .sub{color:#93c5fd;font-size:.82rem;margin-top:3px;font-weight:500}
     .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .sync-badge{font-size:.78rem;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap}
+    .sync-badge{font-size:.75rem;font-weight:700;padding:5px 12px;border-radius:20px;white-space:nowrap}
     .sync-ok{background:#16a34a;color:#fff}
     .sync-saving{background:#d97706;color:#fff}
     .sync-err{background:#dc2626;color:#fff}
-    .sync-local{background:#6b7280;color:#fff}
-    .btn{border:none;border-radius:8px;padding:9px 18px;font-size:.82rem;font-weight:600;cursor:pointer;transition:background .2s;color:white}
-    .btn-green{background:#22c55e}.btn-green:hover{background:#16a34a}
-    .btn-blue{background:#1d4ed8}.btn-blue:hover{background:#1e40af}
-    .btn-gray{background:#6b7280}.btn-gray:hover{background:#4b5563}
-    .btn-orange{background:#f97316}.btn-orange:hover{background:#ea580c}
-    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px}
-    .stat{background:white;border-radius:10px;padding:12px;text-align:center;border:1px solid #e5e7eb;box-shadow:0 1px 3px #0001}
-    .stat-val{font-size:1.6rem;font-weight:700;color:#1d4ed8}
-    .stat-lbl{font-size:.72rem;color:#6b7280;margin-top:2px}
-    .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-    .fbtn{padding:4px 14px;border-radius:999px;font-size:.75rem;font-weight:500;border:1px solid #d1d5db;background:white;color:#4b5563;cursor:pointer;transition:all .15s}
-    .fbtn.active{background:#1d4ed8;color:white;border-color:#1d4ed8}
-    .fbtn:hover:not(.active){border-color:#93c5fd}
-    .table-wrap{background:white;border-radius:12px;overflow-x:auto;border:1px solid #e5e7eb;box-shadow:0 1px 4px #0001}
-    table{width:100%;border-collapse:collapse;font-size:.78rem;min-width:900px}
-    thead tr{background:#1d4ed8;color:white}
-    th{padding:9px 8px;text-align:left;font-weight:600;white-space:nowrap}
-    tbody tr:nth-child(even){background:#f8fafc}
-    td{padding:5px 6px}
-    .ci{border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:.78rem;width:100%;background:transparent;outline:none;font-family:inherit}
-    .ci:focus{border-color:#60a5fa;box-shadow:0 0 0 2px #bfdbfe55}
-    .del-btn{background:none;border:none;color:#f87171;font-size:1.1rem;cursor:pointer;font-weight:700;padding:0 4px}
-    .del-btn:hover{color:#dc2626}
-    .info-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-    @media(max-width:640px){.info-row{grid-template-columns:1fr}}
-    .info-box{background:white;border-radius:12px;border:1px solid #e5e7eb;box-shadow:0 1px 4px #0001;padding:16px}
-    .info-box h3{font-size:.9rem;font-weight:700;color:#1e3a8a;margin-bottom:8px}
-    .info-box textarea{width:100%;border:1px solid #d1d5db;border-radius:8px;padding:10px;font-size:.82rem;font-family:inherit;resize:vertical;outline:none;min-height:80px;color:#374151}
-    .info-box textarea:focus{border-color:#60a5fa;box-shadow:0 0 0 2px #bfdbfe55}
-    .saved-msg{font-size:.72rem;color:#16a34a;margin-top:4px;height:16px}
-    .meeting-date{margin-top:8px;font-size:.85rem;color:#1d4ed8;font-weight:600}
-    .chart-box{background:white;border-radius:12px;border:1px solid #e5e7eb;box-shadow:0 1px 4px #0001;padding:24px;margin-top:16px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:32px}
-    .chart-box h3{width:100%;font-size:.9rem;font-weight:700;color:#1e3a8a;text-align:center}
-    .chart-legend{display:flex;flex-direction:column;gap:10px}
-    .legend-item{display:flex;align-items:center;gap:8px;font-size:.8rem;color:#374151}
-    .legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
-    .footer{text-align:center;font-size:.72rem;color:#9ca3af;margin-top:14px}
-    .loading{text-align:center;padding:40px;color:#6b7280;font-size:.9rem}
-    .modal-bg{position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:100}
-    .modal{background:white;border-radius:14px;padding:28px;width:min(520px,95vw);box-shadow:0 8px 32px #0003}
-    .modal h2{font-size:1.1rem;font-weight:700;margin-bottom:6px;color:#1e3a8a}
-    .modal p{font-size:.82rem;color:#4b5563;margin-bottom:14px;line-height:1.5}
-    .modal input{width:100%;border:1px solid #d1d5db;border-radius:7px;padding:9px 12px;font-size:.85rem;outline:none;margin-bottom:12px}
-    .modal input:focus{border-color:#60a5fa}
-    .modal-btns{display:flex;gap:10px;justify-content:flex-end}
 
-    /* Workday banner */
-    .workday-banner{background:linear-gradient(135deg,#1e3a8a 0%,#f97316 100%);border-radius:14px;padding:24px 28px;margin-bottom:16px;color:white;box-shadow:0 4px 16px #0003;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
-    .workday-banner-left{display:flex;flex-direction:column;gap:6px}
-    .workday-banner-title{font-size:1.4rem;font-weight:800;letter-spacing:.02em;display:flex;align-items:center;gap:10px}
-    .workday-banner-sub{font-size:.85rem;opacity:.9;font-weight:500}
-    .workday-banner-meta{display:flex;gap:20px;flex-wrap:wrap;margin-top:4px}
-    .workday-meta-item{display:flex;flex-direction:column;align-items:flex-start}
-    .workday-meta-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;opacity:.75;font-weight:600}
-    .workday-meta-value{font-size:1.1rem;font-weight:700}
-    .workday-banner-right{display:flex;flex-direction:column;align-items:center;gap:8px}
-    .workday-big-signup{border:none;border-radius:12px;padding:14px 28px;font-size:1rem;font-weight:800;cursor:pointer;background:white;color:#f97316;transition:all .2s;box-shadow:0 2px 8px #0002;white-space:nowrap}
-    .workday-big-signup:hover{background:#fff7ed;transform:scale(1.03)}
-    .workday-big-signup.signed{background:#dcfce7;color:#15803d}
-    .workday-big-signup.signed:hover{background:#bbf7d0}
-    .workday-volunteers-preview{font-size:.75rem;opacity:.85;text-align:center}
-    .workday-no-date{font-size:.85rem;opacity:.7;font-style:italic}
-    tr.workday-row{background:#fff7ed !important;outline:2px solid #f97316;outline-offset:-2px}
-    tr.workday-row td{font-weight:600}
-    .workday-row-badge{display:inline-block;background:#f97316;color:white;border-radius:4px;padding:1px 6px;font-size:.65rem;font-weight:700;margin-left:4px;vertical-align:middle}
+    /* STAT BAR */
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px}
+    .stat{background:var(--white);border-radius:12px;padding:14px 16px;border:1px solid var(--border);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px}
+    .stat-val{font-size:1.7rem;font-weight:800;color:var(--navy);line-height:1}
+    .stat-val.orange{color:var(--orange)}
+    .stat-val.green{color:var(--green)}
+    .stat-val.red{color:var(--red)}
+    .stat-val.blue{color:var(--blue)}
+    .stat-lbl{font-size:.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
 
-    /* Sign-up styles */
-    .signup-cell{display:flex;flex-direction:column;gap:4px}
-    .signup-names{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:2px}
-    .volunteer-tag{display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;border-radius:999px;padding:2px 8px;font-size:.72rem;font-weight:600}
-    .volunteer-tag.is-me{background:#dcfce7;color:#15803d}
-    .remove-me{background:none;border:none;color:#ef4444;cursor:pointer;font-size:.85rem;line-height:1;padding:0;font-weight:700}
-    .remove-me:hover{color:#b91c1c}
-    .signup-btn{border:none;border-radius:999px;padding:3px 12px;font-size:.72rem;font-weight:700;cursor:pointer;background:#f97316;color:white;transition:background .2s;white-space:nowrap;align-self:flex-start}
-    .signup-btn:hover{background:#ea580c}
+    /* BUTTONS */
+    .btn{border:none;border-radius:9px;padding:9px 18px;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .18s;font-family:'DM Sans',sans-serif;color:white;display:inline-flex;align-items:center;gap:6px}
+    .btn-navy{background:var(--navy)}.btn-navy:hover{background:var(--navy2)}
+    .btn-orange{background:var(--orange)}.btn-orange:hover{background:var(--orange2)}
+    .btn-green{background:var(--green)}.btn-green:hover{background:var(--green2)}
+    .btn-gray{background:#94a3b8}.btn-gray:hover{background:#64748b}
+    .btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}.btn-ghost:hover{border-color:#94a3b8;color:var(--text)}
+    .btn-sm{padding:5px 12px;font-size:.75rem;border-radius:7px}
+    .btn-danger{background:transparent;color:var(--red);border:1.5px solid #fca5a5;font-weight:700}.btn-danger:hover{background:#fee2e2}
 
-    /* Signup modal special */
-    .signup-modal{background:white;border-radius:16px;padding:32px 28px;width:min(400px,95vw);box-shadow:0 8px 40px #0004;text-align:center}
-    .signup-modal .emoji{font-size:2.5rem;margin-bottom:12px}
-    .signup-modal h2{font-size:1.15rem;font-weight:700;color:#1e3a8a;margin-bottom:6px}
-    .signup-modal .project-name{font-size:1rem;font-weight:700;color:#f97316;margin-bottom:16px}
-    .signup-modal input{width:100%;border:2px solid #e5e7eb;border-radius:10px;padding:12px 14px;font-size:.95rem;outline:none;margin-bottom:16px;text-align:center}
-    .signup-modal input:focus{border-color:#60a5fa}
-    .signup-modal .big-btn{width:100%;padding:12px;font-size:.95rem;border-radius:10px;border:none;font-weight:700;cursor:pointer;color:white;background:#22c55e;transition:background .2s;margin-bottom:8px}
-    .signup-modal .big-btn:hover{background:#16a34a}
-    .signup-modal .cancel-link{font-size:.78rem;color:#9ca3af;cursor:pointer;background:none;border:none}
-    .signup-modal .cancel-link:hover{color:#6b7280}
-    .signup-modal .already-signed{background:#dcfce7;border-radius:10px;padding:12px;font-size:.82rem;color:#15803d;font-weight:600;margin-bottom:14px}
-    .signup-modal .leave-btn{width:100%;padding:10px;font-size:.88rem;border-radius:10px;border:2px solid #fca5a5;font-weight:600;cursor:pointer;color:#dc2626;background:white;transition:all .2s;margin-bottom:8px}
-    .signup-modal .leave-btn:hover{background:#fee2e2}
+    /* SECTION */
+    .section{background:var(--white);border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+    .section-header{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border-bottom:1px solid var(--border)}
+    .section-title{font-size:1rem;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:8px}
+    .section-title .badge{font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:var(--muted);border:1px solid var(--border)}
+    .section-desc{font-size:.75rem;color:var(--muted);margin-top:2px;font-weight:500}
+
+    /* CARDS */
+    .cards{padding:16px;display:flex;flex-direction:column;gap:10px}
+    .card{border:1.5px solid var(--border);border-radius:11px;padding:14px 16px;background:var(--light);transition:border-color .15s}
+    .card:hover{border-color:#93c5fd}
+    .card.urgent{border-color:#fca5a5;background:#fff5f5}
+    .card.high{border-color:#fed7aa;background:#fff7ed}
+    .card.done{border-color:#bbf7d0;background:#f0fdf4;opacity:.75}
+    .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .card-title{font-size:.92rem;font-weight:700;color:var(--navy);flex:1}
+    .card-title.done-text{text-decoration:line-through;color:var(--muted)}
+    .card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;align-items:center}
+    .tag{font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
+    .tag-skill{background:#dbeafe;color:#1e40af}
+    .tag-location{background:#f3e8ff;color:#7c3aed}
+    .tag-priority-low{background:#dcfce7;color:#15803d}
+    .tag-priority-medium{background:#fef9c3;color:#92400e}
+    .tag-priority-high{background:#fed7aa;color:#c2410c}
+    .tag-priority-urgent{background:#fee2e2;color:#b91c1c}
+    .tag-done{background:#dcfce7;color:#15803d}
+    .card-notes{font-size:.78rem;color:var(--muted);margin-top:7px;line-height:1.5;font-style:italic}
+    .card-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:8px}
+    .volunteers-list{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+    .vol-tag{display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;border-radius:999px;padding:3px 10px;font-size:.72rem;font-weight:600}
+    .vol-tag.me{background:#dcfce7;color:#15803d}
+    .no-vols{font-size:.75rem;color:#94a3b8;font-style:italic}
+    .card-actions{display:flex;gap:6px;flex-wrap:wrap}
+
+    /* EMPTY STATE */
+    .empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:.85rem}
+    .empty-icon{font-size:2rem;margin-bottom:8px}
+
+    /* MODAL */
+    .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
+    .modal{background:white;border-radius:16px;padding:28px;width:min(480px,100%);box-shadow:var(--shadow-lg);max-height:90vh;overflow-y:auto}
+    .modal h2{font-size:1.1rem;font-weight:800;color:var(--navy);margin-bottom:4px}
+    .modal .modal-sub{font-size:.8rem;color:var(--muted);margin-bottom:20px}
+    .field{margin-bottom:14px}
+    .field label{display:block;font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+    .field input,.field select,.field textarea{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:.85rem;font-family:'DM Sans',sans-serif;outline:none;color:var(--text);background:white;transition:border-color .15s}
+    .field input:focus,.field select:focus,.field textarea:focus{border-color:#60a5fa;box-shadow:0 0 0 3px #bfdbfe44}
+    .field textarea{resize:vertical;min-height:70px}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .modal-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+
+    /* SIGNUP MODAL */
+    .signup-modal{background:white;border-radius:16px;padding:28px;width:min(420px,100%);box-shadow:var(--shadow-lg)}
+    .signup-modal .icon{font-size:2.2rem;text-align:center;margin-bottom:10px}
+    .signup-modal h2{text-align:center;font-size:1.1rem;font-weight:800;color:var(--navy);margin-bottom:4px}
+    .signup-modal .task-name{text-align:center;font-size:.9rem;color:var(--orange);font-weight:700;margin-bottom:18px;background:#fff7ed;border-radius:8px;padding:8px 12px}
+    .volunteer-input-row{display:flex;gap:8px;margin-bottom:10px}
+    .volunteer-input-row input{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:.85rem;font-family:'DM Sans',sans-serif;outline:none}
+    .volunteer-input-row input:focus{border-color:#60a5fa}
+    .current-vols{background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:16px}
+    .current-vols-title{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+    .vol-remove{display:inline-flex;align-items:center;gap:5px;background:#dbeafe;color:#1e40af;border-radius:999px;padding:3px 8px 3px 10px;font-size:.72rem;font-weight:600;margin:2px}
+    .vol-remove button{background:none;border:none;color:#ef4444;cursor:pointer;font-size:.85rem;font-weight:700;padding:0;line-height:1}
+    .big-join-btn{width:100%;padding:12px;font-size:.95rem;font-weight:800;border-radius:10px;border:none;cursor:pointer;color:white;background:var(--green);font-family:'DM Sans',sans-serif;transition:background .2s;margin-bottom:8px}
+    .big-join-btn:hover{background:var(--green2)}
+    .cancel-link{display:block;text-align:center;font-size:.78rem;color:var(--muted);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;width:100%}
+    .cancel-link:hover{color:var(--text)}
+
+    /* MARK DONE CONFIRM */
+    .done-confirmed{background:#dcfce7;border-radius:10px;padding:10px 14px;font-size:.8rem;color:#15803d;font-weight:600;margin-bottom:12px;text-align:center}
+
+    .loading{text-align:center;padding:60px;color:var(--muted);font-size:.9rem}
+    .footer{text-align:center;font-size:.7rem;color:#94a3b8;margin-top:14px;padding-bottom:8px}
+
+    @media(max-width:600px){.field-row{grid-template-columns:1fr}.header{padding:16px 18px}}
   </style>
 </head>
 <body>
@@ -118,510 +133,456 @@
 const {useState, useEffect, useRef} = React;
 
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypnsM1fmD7lshJkCt58pBwTIWdvFH-t2jhG2WD32zgihKk-g_DwUn-V8JCSLsCsdfbdQ/exec";
-const TEAMS = ["Carpenter","Plumber","Electrician","Concrete","Roofing","Construction","IT","Landscaping","Grounds Keeping","Misc"];
-const STATUS = ["Planned","In Progress","On Hold","Completed"];
-const STATUS_COLORS = {"Completed":"#22c55e","In Progress":"#f59e0b","Planned":"#60a5fa","On Hold":"#d1d5db"};
-const COLS = [
-  {key:"project",    label:"Project Name",   w:22},
-  {key:"description",label:"Description",    w:30},
-  {key:"team",       label:"Team / Skill",    w:16},
-  {key:"teamLead",   label:"Team Lead",       w:18},
-  {key:"volunteers", label:"Volunteers",      w:22},
-  {key:"startDate",  label:"Start Date",      w:12},
-  {key:"endDate",    label:"End Date",        w:12},
-  {key:"estCost",    label:"Est. Cost ($)",   w:13},
-  {key:"actualCost", label:"Actual Cost ($)", w:14},
-  {key:"status",     label:"Status",          w:13},
-  {key:"notes",      label:"Notes",           w:30}
-];
-const newRow = () => ({project:"",description:"",team:TEAMS[0],teamLead:"",volunteers:"",startDate:"",endDate:"",estCost:"",actualCost:"",status:"Planned",notes:""});
-const LS_ROWS = "fac_rows", LS_NOTES = "fac_notes", LS_MEETING = "fac_meeting", LS_MY_NAME = "fac_my_name";
 
-// Helper: parse comma-separated volunteer string into array
-const parseVolunteers = (str) => (str||"").split(",").map(s=>s.trim()).filter(Boolean);
-const joinVolunteers = (arr) => arr.join(", ");
+const SKILLS = ["Any","Carpenter","Plumber","Electrician","Concrete","Roofing","Construction","IT","Landscaping","Grounds Keeping","Misc"];
+const PRIORITIES = ["Low","Medium","High","Urgent"];
+const LS_RECURRING = "fac_recurring";
+const LS_ONEOFF = "fac_oneoff";
+const LS_MY_NAME = "fac_my_name";
 
-// Headcount helpers — stores as "Name(3)" for Workday signups
-const parseCount = (entry) => {
-  const m = entry.match(/^(.*)\((\d+)\)$/);
-  return m ? {name: m[1].trim(), count: parseInt(m[2])} : {name: entry.trim(), count: 1};
-};
-const totalHeadcount = (volunteers) => volunteers.reduce((sum, v) => sum + parseCount(v).count, 0);
-const formatVolunteerEntry = (name, count) => count > 1 ? `${name}(${count})` : name;
-const displayVolunteerName = (entry) => {
-  const {name, count} = parseCount(entry);
-  return count > 1 ? `${name} +${count-1}` : name;
-};
+const uid = () => Math.random().toString(36).slice(2,9);
 
-function ProjectDonut({ rows }) {
-  const total = rows.length;
-  const counts = STATUS.reduce((a,s) => { a[s]=rows.filter(r=>r.status===s).length; return a; }, {});
-  const completed = counts["Completed"]||0;
-  const pct = total>0 ? Math.round((completed/total)*100) : 0;
-  const R=70, cx=90, cy=90, stroke=28, circ=2*Math.PI*R;
-  let offset=0;
-  const segs = STATUS.map(s => {
-    const val=counts[s]||0, frac=total>0?val/total:0, dash=frac*circ;
-    const seg={s,val,dash,offset,color:STATUS_COLORS[s]};
-    offset+=dash; return seg;
-  }).filter(s=>s.val>0);
-  return (
-    <div className="chart-box">
-      <h3>📊 Project Completion Overview</h3>
-      <svg width="180" height="180" viewBox="0 0 180 180">
-        {total===0
-          ? <circle cx={cx} cy={cy} r={R} fill="none" stroke="#e5e7eb" strokeWidth={stroke}/>
-          : segs.map((seg,i)=>(
-            <circle key={i} cx={cx} cy={cy} r={R} fill="none"
-              stroke={seg.color} strokeWidth={stroke}
-              strokeDasharray={`${seg.dash} ${circ-seg.dash}`}
-              strokeDashoffset={-seg.offset+circ/4}
-              style={{transform:"rotate(-90deg)",transformOrigin:"50% 50%"}}
-            />
-          ))
-        }
-        <text x={cx} y={cy-10} textAnchor="middle" fontSize="22" fontWeight="700" fill="#1e3a8a">{pct}%</text>
-        <text x={cx} y={cy+12} textAnchor="middle" fontSize="11" fill="#6b7280">Complete</text>
-        <text x={cx} y={cy+26} textAnchor="middle" fontSize="10" fill="#9ca3af">{completed}/{total} projects</text>
-      </svg>
-      <div className="chart-legend">
-        {STATUS.map(s=>(
-          <div className="legend-item" key={s}>
-            <div className="legend-dot" style={{background:STATUS_COLORS[s]}}></div>
-            <span><strong>{counts[s]||0}</strong> {s}</span>
-          </div>
-        ))}
-      </div>
+const newRecurring = () => ({
+  id: uid(), title:"", location:"", skill:"Any", priority:"Medium", notes:"", volunteers:[]
+});
+const newOneOff = () => ({
+  id: uid(), title:"", location:"", skill:"Any", priority:"Medium", notes:"", volunteers:[], done:false, addedBy:""
+});
+
+function App() {
+  const [recurring, setRecurring] = useState([]);
+  const [oneoffs, setOneoffs] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("saving");
+  const [myName, setMyName] = useState(()=>{ try{return localStorage.getItem(LS_MY_NAME)||"";}catch{return "";} });
+
+  // Modals
+  const [showAddRecurring, setShowAddRecurring] = useState(false);
+  const [showAddOneOff, setShowAddOneOff] = useState(false);
+  const [signupTarget, setSignupTarget] = useState(null); // {type:'recurring'|'oneoff', id}
+  const [editTarget, setEditTarget] = useState(null); // {type, item}
+
+  const saveRef = useRef(null);
+  const userChangedRef = useRef(false);
+
+  const saveToSheets = (r, o) => {
+    setSyncStatus("saving");
+    clearTimeout(saveRef.current);
+    saveRef.current = setTimeout(()=>{
+      fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({recurring:r, oneoffs:o})})
+        .then(()=>setSyncStatus("ok")).catch(()=>setSyncStatus("err"));
+    }, 1500);
+  };
+
+  const loadFromSheets = () => {
+    setSyncStatus("saving");
+    let localR=[], localO=[];
+    try{ const s=localStorage.getItem(LS_RECURRING); if(s) localR=JSON.parse(s); }catch{}
+    try{ const s=localStorage.getItem(LS_ONEOFF); if(s) localO=JSON.parse(s); }catch{}
+    fetch(SCRIPT_URL+"?nocache="+Date.now()+"&r="+Math.random(),{cache:"no-store"})
+      .then(r=>r.json())
+      .then(data=>{
+        if(data.recurring && data.recurring.length>0){
+          setRecurring(data.recurring);
+          try{localStorage.setItem(LS_RECURRING,JSON.stringify(data.recurring));}catch{}
+        } else if(localR.length>0){ setRecurring(localR); }
+        if(data.oneoffs && data.oneoffs.length>0){
+          setOneoffs(data.oneoffs);
+          try{localStorage.setItem(LS_ONEOFF,JSON.stringify(data.oneoffs));}catch{}
+        } else if(localO.length>0){ setOneoffs(localO); }
+        setSyncStatus("ok");
+        setLoaded(true);
+      })
+      .catch(()=>{
+        if(localR.length>0) setRecurring(localR);
+        if(localO.length>0) setOneoffs(localO);
+        setSyncStatus("err");
+        setLoaded(true);
+      });
+  };
+
+  useEffect(()=>{ loadFromSheets(); },[]);
+
+  useEffect(()=>{
+    const interval=setInterval(()=>{ if(!userChangedRef.current) loadFromSheets(); },30000);
+    return ()=>clearInterval(interval);
+  },[]);
+
+  const persist = (r, o) => {
+    userChangedRef.current = true;
+    try{localStorage.setItem(LS_RECURRING,JSON.stringify(r));}catch{}
+    try{localStorage.setItem(LS_ONEOFF,JSON.stringify(o));}catch{}
+    saveToSheets(r, o);
+  };
+
+  const addRecurring = (item) => {
+    const next = [...recurring, {...item, id:uid()}];
+    setRecurring(next); persist(next, oneoffs);
+  };
+  const updateRecurring = (item) => {
+    const next = recurring.map(r=>r.id===item.id?item:r);
+    setRecurring(next); persist(next, oneoffs);
+  };
+  const deleteRecurring = (id) => {
+    const next = recurring.filter(r=>r.id!==id);
+    setRecurring(next); persist(next, oneoffs);
+  };
+
+  const addOneOff = (item) => {
+    const next = [...oneoffs, {...item, id:uid(), done:false}];
+    setOneoffs(next); persist(recurring, next);
+  };
+  const updateOneOff = (item) => {
+    const next = oneoffs.map(o=>o.id===item.id?item:o);
+    setOneoffs(next); persist(recurring, next);
+  };
+  const deleteOneOff = (id) => {
+    const next = oneoffs.filter(o=>o.id!==id);
+    setOneoffs(next); persist(recurring, next);
+  };
+  const markDone = (id) => {
+    const next = oneoffs.map(o=>o.id===id?{...o,done:true}:o);
+    setOneoffs(next); persist(recurring, next);
+  };
+
+  const handleVolunteerSignup = (type, id, name) => {
+    if(!name.trim()) return;
+    if(type==='recurring'){
+      const next = recurring.map(r=>{
+        if(r.id!==id) return r;
+        if(r.volunteers.some(v=>v.toLowerCase()===name.trim().toLowerCase())) return r;
+        return {...r, volunteers:[...r.volunteers, name.trim()]};
+      });
+      setRecurring(next); persist(next, oneoffs);
+    } else {
+      const next = oneoffs.map(o=>{
+        if(o.id!==id) return o;
+        if(o.volunteers.some(v=>v.toLowerCase()===name.trim().toLowerCase())) return o;
+        return {...o, volunteers:[...o.volunteers, name.trim()]};
+      });
+      setOneoffs(next); persist(recurring, next);
+    }
+  };
+
+  const handleVolunteerRemove = (type, id, name) => {
+    if(type==='recurring'){
+      const next = recurring.map(r=>r.id!==id?r:{...r,volunteers:r.volunteers.filter(v=>v!==name)});
+      setRecurring(next); persist(next, oneoffs);
+    } else {
+      const next = oneoffs.map(o=>o.id!==id?o:{...o,volunteers:o.volunteers.filter(v=>v!==name)});
+      setOneoffs(next); persist(recurring, next);
+    }
+  };
+
+  const handleNameSave = (name) => {
+    setMyName(name);
+    try{localStorage.setItem(LS_MY_NAME,name);}catch{}
+  };
+
+  // Stats
+  const totalVols = new Set([
+    ...recurring.flatMap(r=>r.volunteers),
+    ...oneoffs.filter(o=>!o.done).flatMap(o=>o.volunteers)
+  ]).size;
+  const openRepairs = oneoffs.filter(o=>!o.done).length;
+  const urgentCount = [...recurring,...oneoffs.filter(o=>!o.done)].filter(i=>i.priority==="Urgent").length;
+  const coveredRecurring = recurring.filter(r=>r.volunteers.length>0).length;
+
+  const syncLabel = {ok:"✔ Synced",saving:"⏳ Saving...",err:"⚠ Sync Error"}[syncStatus]||"⏳";
+  const syncClass = {ok:"sync-ok",saving:"sync-saving",err:"sync-err"}[syncStatus]||"sync-saving";
+
+  if(!loaded) return (
+    <div>
+      <div className="header"><div className="header-left"><h1>⚒ Friday Afternoon Club</h1><div className="sub">JP2 Independent School — Volunteer Sign-Up</div></div></div>
+      <div className="loading">⏳ Loading from Google Sheets...</div>
     </div>
   );
-}
 
-// Workday Banner component
-function WorkdayBanner({ workdayRow, workdayIndex, myName, onOpenSignup }) {
-  if (!workdayRow) return null;
-  const volunteers = parseVolunteers(workdayRow.volunteers);
-  const isSigned = myName && volunteers.some(v=>parseCount(v).name.toLowerCase()===myName.toLowerCase());
-  const myEntry = isSigned ? volunteers.find(v=>parseCount(v).name.toLowerCase()===myName.toLowerCase()) : null;
-  const myCount = myEntry ? parseCount(myEntry).count : 1;
-  const formatDate = (d) => {
-    if(!d) return null;
-    const parts = d.toString().split(/[-\/]/);
-    if(parts.length===3){
-      const [y,m,day] = parts;
-      const dt = new Date(parseInt(y),parseInt(m)-1,parseInt(day));
-      if(!isNaN(dt)) return dt.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-    }
-    return null;
-  };
-  const dateStr = formatDate(workdayRow.startDate);
+  const signupItem = signupTarget
+    ? (signupTarget.type==='recurring' ? recurring.find(r=>r.id===signupTarget.id) : oneoffs.find(o=>o.id===signupTarget.id))
+    : null;
+
   return (
-    <div className="workday-banner">
-      <div className="workday-banner-left">
-        <div className="workday-banner-title">🏗️ Workday</div>
-        <div className="workday-banner-sub">{workdayRow.notes || workdayRow.description || "All-hands project day — everyone welcome!"}</div>
-        <div className="workday-banner-meta">
-          <div className="workday-meta-item">
-            <span className="workday-meta-label">📅 Date</span>
-            <span className="workday-meta-value">{dateStr || <span className="workday-no-date">TBD</span>}</span>
+    <div>
+      {/* Header */}
+      <div className="header">
+        <div className="header-left">
+          <h1>⚒ Friday Afternoon Club</h1>
+          <div className="sub">JP2 Independent School — Volunteer Sign-Up Sheet</div>
+        </div>
+        <div className="header-right">
+          <span className={"sync-badge "+syncClass}>{syncLabel}</span>
+          <button className="btn btn-gray" onClick={loadFromSheets}>🔄 Reload</button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="stats">
+        <div className="stat"><div className="stat-val blue">{recurring.length}</div><div className="stat-lbl">Recurring Tasks</div></div>
+        <div className="stat"><div className="stat-val orange">{openRepairs}</div><div className="stat-lbl">Open Repairs</div></div>
+        <div className="stat"><div className="stat-val green">{coveredRecurring}/{recurring.length}</div><div className="stat-lbl">Tasks Covered</div></div>
+        <div className="stat"><div className="stat-val green">{totalVols}</div><div className="stat-lbl">Total Volunteers</div></div>
+        {urgentCount>0 && <div className="stat"><div className="stat-val red">{urgentCount}</div><div className="stat-lbl">Urgent Items</div></div>}
+        <div className="stat"><div className="stat-val" style={{color:'#94a3b8'}}>{oneoffs.filter(o=>o.done).length}</div><div className="stat-lbl">Repairs Done</div></div>
+      </div>
+
+      {/* RECURRING SECTION */}
+      <div className="section">
+        <div className="section-header">
+          <div>
+            <div className="section-title">🔁 Recurring Tasks <span className="badge">{recurring.length}</span></div>
+            <div className="section-desc">Ongoing maintenance — mowing, cleaning, inspections. These stay on the list.</div>
           </div>
-          <div className="workday-meta-item">
-            <span className="workday-meta-label">👷 Total People</span>
-            <span className="workday-meta-value">{volunteers.length > 0 ? totalHeadcount(volunteers)+" attending" : "Be the first!"}</span>
+          <button className="btn btn-navy" onClick={()=>setShowAddRecurring(true)}>+ Add Task</button>
+        </div>
+        <div className="cards">
+          {recurring.length===0 && <div className="empty"><div className="empty-icon">🌿</div>No recurring tasks yet. Add one to get started!</div>}
+          {recurring.map(item=>(
+            <TaskCard key={item.id} item={item} type="recurring"
+              onSignup={()=>setSignupTarget({type:'recurring',id:item.id})}
+              onEdit={()=>setEditTarget({type:'recurring',item})}
+              onDelete={()=>deleteRecurring(item.id)}
+              onRemoveVol={(name)=>handleVolunteerRemove('recurring',item.id,name)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* ONE-OFF SECTION */}
+      <div className="section">
+        <div className="section-header">
+          <div>
+            <div className="section-title">🔧 One-Off Repairs <span className="badge">{openRepairs} open</span></div>
+            <div className="section-desc">Things that need fixing once. Mark as done when complete — anyone can add a request.</div>
           </div>
-          {volunteers.length > 0 && (
-            <div className="workday-meta-item">
-              <span className="workday-meta-label">👥 Who's in</span>
-              <span className="workday-meta-value" style={{fontSize:".82rem",maxWidth:"300px",lineHeight:"1.4"}}>{volunteers.map(v=>displayVolunteerName(v)).join(", ")}</span>
-            </div>
+          <button className="btn btn-orange" onClick={()=>setShowAddOneOff(true)}>+ Request Repair</button>
+        </div>
+        <div className="cards">
+          {oneoffs.filter(o=>!o.done).length===0 && oneoffs.filter(o=>o.done).length===0 &&
+            <div className="empty"><div className="empty-icon">🔧</div>No repairs requested yet. Something need fixing?</div>
+          }
+          {/* Open repairs */}
+          {oneoffs.filter(o=>!o.done).map(item=>(
+            <TaskCard key={item.id} item={item} type="oneoff"
+              onSignup={()=>setSignupTarget({type:'oneoff',id:item.id})}
+              onEdit={()=>setEditTarget({type:'oneoff',item})}
+              onDelete={()=>deleteOneOff(item.id)}
+              onMarkDone={()=>markDone(item.id)}
+              onRemoveVol={(name)=>handleVolunteerRemove('oneoff',item.id,name)}
+            />
+          ))}
+          {/* Completed repairs — collapsed */}
+          {oneoffs.filter(o=>o.done).length>0 && (
+            <details style={{marginTop:4}}>
+              <summary style={{cursor:'pointer',fontSize:'.78rem',color:'var(--muted)',fontWeight:600,padding:'8px 4px',userSelect:'none'}}>
+                ✅ {oneoffs.filter(o=>o.done).length} completed repair{oneoffs.filter(o=>o.done).length!==1?'s':''} — click to view
+              </summary>
+              {oneoffs.filter(o=>o.done).map(item=>(
+                <TaskCard key={item.id} item={item} type="oneoff" isDone
+                  onDelete={()=>deleteOneOff(item.id)}
+                  onRemoveVol={()=>{}}
+                />
+              ))}
+            </details>
           )}
         </div>
       </div>
-      <div className="workday-banner-right">
-        <button
-          className={"workday-big-signup"+(isSigned?" signed":"")}
-          onClick={()=>onOpenSignup(workdayIndex)}>
-          {isSigned ? "✅ You're In!" : "✋ Sign Me Up!"}
-        </button>
-        {isSigned && <div className="workday-volunteers-preview">Signed up as <strong>{myName}</strong>{myCount>1?` (+${myCount-1} others)`:""}</div>}
-      </div>
+
+      <div className="footer">Auto-saves to Google Sheets · Refreshes every 30 seconds · JP2 Independent School — FAC</div>
+
+      {/* Add Recurring Modal */}
+      {showAddRecurring && (
+        <ItemFormModal
+          title="Add Recurring Task"
+          sub="This will stay on the list until manually removed."
+          initial={newRecurring()}
+          onSave={(item)=>{ addRecurring(item); setShowAddRecurring(false); }}
+          onClose={()=>setShowAddRecurring(false)}
+          showAddedBy={false}
+        />
+      )}
+
+      {/* Add One-Off Modal */}
+      {showAddOneOff && (
+        <ItemFormModal
+          title="Request a Repair"
+          sub="Describe what needs fixing. Anyone can submit a request."
+          initial={newOneOff()}
+          onSave={(item)=>{ addOneOff(item); setShowAddOneOff(false); }}
+          onClose={()=>setShowAddOneOff(false)}
+          showAddedBy={true}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editTarget && (
+        <ItemFormModal
+          title={"Edit " + (editTarget.type==='recurring'?'Task':'Repair')}
+          sub="Update the details below."
+          initial={editTarget.item}
+          onSave={(item)=>{
+            if(editTarget.type==='recurring') updateRecurring(item);
+            else updateOneOff(item);
+            setEditTarget(null);
+          }}
+          onClose={()=>setEditTarget(null)}
+          showAddedBy={editTarget.type==='oneoff'}
+        />
+      )}
+
+      {/* Sign-up Modal */}
+      {signupTarget && signupItem && (
+        <SignupModal
+          item={signupItem}
+          myName={myName}
+          onClose={()=>setSignupTarget(null)}
+          onSignup={(name)=>{ handleNameSave(name); handleVolunteerSignup(signupTarget.type, signupTarget.id, name); }}
+          onRemove={(name)=>handleVolunteerRemove(signupTarget.type, signupTarget.id, name)}
+        />
+      )}
     </div>
   );
 }
 
-// Sign-up modal component
-function SignupModal({ project, currentVolunteers, myName, onClose, onSignUp, onLeave, onNameChange }) {
-  const [nameInput, setNameInput] = useState(myName||"");
-  const [countInput, setCountInput] = useState(1);
-  const volunteers = parseVolunteers(currentVolunteers);
-  const isSigned = myName && volunteers.some(v=>parseCount(v).name.toLowerCase()===myName.toLowerCase());
-  const myEntry = isSigned ? volunteers.find(v=>parseCount(v).name.toLowerCase()===myName.toLowerCase()) : null;
-  const myCount = myEntry ? parseCount(myEntry).count : 1;
-
-  const handleSignUp = () => {
-    const name = nameInput.trim();
-    if(!name) return;
-    onNameChange(name);
-    onSignUp(name, parseInt(countInput)||1);
-    onClose();
-  };
-
-  const handleLeave = () => {
-    onLeave(myName);
-    onClose();
-  };
-
+function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, onRemoveVol}) {
+  const priorityClass = isDone ? 'done' : item.priority.toLowerCase();
   return (
-    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="signup-modal">
-        <div className="emoji">{isSigned ? "✅" : "🙋"}</div>
-        <h2>{isSigned ? "You're signed up!" : "Sign up for"}</h2>
-        <div className="project-name">{project}</div>
-
-        {isSigned ? (
-          <>
-            <div className="already-signed">
-              You're on the list as <strong>{myName}</strong> — bringing <strong>{myCount} {myCount===1?"person":"people"}</strong> total 🎉
-            </div>
-            <button className="leave-btn" onClick={handleLeave}>Remove myself from this project</button>
-            <button className="cancel-link" onClick={onClose}>Close</button>
-          </>
-        ) : (
-          <>
-            <input
-              type="text"
-              placeholder="Enter your name"
-              value={nameInput}
-              onChange={e=>setNameInput(e.target.value)}
-              onKeyDown={e=>e.key==="Enter"&&handleSignUp()}
-              autoFocus
-            />
-            <div style={{display:"flex",alignItems:"center",gap:"12px",marginBottom:"16px",background:"#f8fafc",borderRadius:"10px",padding:"12px 14px"}}>
-              <span style={{fontSize:".88rem",color:"#374151",fontWeight:600,flex:1}}>👨‍👩‍👧 How many people are you bringing? <span style={{fontSize:".75rem",color:"#9ca3af",fontWeight:400}}>(including yourself)</span></span>
-              <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
-                <button onClick={()=>setCountInput(c=>Math.max(1,c-1))} style={{width:"28px",height:"28px",borderRadius:"50%",border:"1px solid #d1d5db",background:"white",fontSize:"1.1rem",cursor:"pointer",fontWeight:700,lineHeight:1}}>−</button>
-                <span style={{fontSize:"1.2rem",fontWeight:700,minWidth:"24px",textAlign:"center",color:"#1e3a8a"}}>{countInput}</span>
-                <button onClick={()=>setCountInput(c=>c+1)} style={{width:"28px",height:"28px",borderRadius:"50%",border:"1px solid #d1d5db",background:"white",fontSize:"1.1rem",cursor:"pointer",fontWeight:700,lineHeight:1}}>+</button>
-              </div>
-            </div>
-          <button className="big-btn" onClick={handleSignUp}>✋ Join This Project</button>
-            <button className="cancel-link" onClick={onClose}>Cancel</button>
-          </>
+    <div className={`card ${priorityClass}`}>
+      <div className="card-top">
+        <div style={{flex:1}}>
+          <div className={"card-title"+(isDone?" done-text":"")}>{item.title||<span style={{color:'#94a3b8',fontStyle:'italic'}}>Untitled</span>}</div>
+          <div className="card-meta">
+            {item.priority && !isDone && <span className={`tag tag-priority-${item.priority.toLowerCase()}`}>{item.priority==='Urgent'?'🚨 ':'⚑ '}{item.priority}</span>}
+            {isDone && <span className="tag tag-done">✅ Done</span>}
+            {type==='recurring' && item.skill && item.skill!=='Any' && <span className="tag tag-skill">🛠 {item.skill}</span>}
+            {item.location && <span className="tag tag-location">📍 {item.location}</span>}
+            {item.addedBy && <span className="tag" style={{background:'#f1f5f9',color:'var(--muted)'}}>Requested by {item.addedBy}</span>}
+          </div>
+          {item.notes && <div className="card-notes">"{item.notes}"</div>}
+        </div>
+      </div>
+      <div className="card-bottom">
+        <div className="volunteers-list">
+          {item.volunteers.length===0
+            ? <span className="no-vols">{isDone?'—':'No volunteers yet — be the first!'}</span>
+            : item.volunteers.map((v,i)=>(
+              <span key={i} className="vol-tag">
+                👤 {v}
+                {!isDone && <button onClick={()=>onRemoveVol(v)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontWeight:700,fontSize:'.8rem',marginLeft:2,lineHeight:1}}>×</button>}
+              </span>
+            ))
+          }
+        </div>
+        {!isDone && (
+          <div className="card-actions">
+            {onSignup && <button className="btn btn-green btn-sm" onClick={onSignup}>✋ Volunteer</button>}
+            {onMarkDone && <button className="btn btn-sm" style={{background:'#f0fdf4',color:'#15803d',border:'1.5px solid #86efac',fontWeight:700}} onClick={onMarkDone}>✅ Mark Fixed</button>}
+            {onEdit && <button className="btn btn-ghost btn-sm" onClick={onEdit}>✏️ Edit</button>}
+            {onDelete && <button className="btn btn-danger btn-sm" onClick={()=>{ if(window.confirm('Remove this item?')) onDelete(); }}>🗑</button>}
+          </div>
+        )}
+        {isDone && onDelete && (
+          <button className="btn btn-danger btn-sm" onClick={()=>{ if(window.confirm('Remove this completed repair?')) onDelete(); }}>🗑 Remove</button>
         )}
       </div>
     </div>
   );
 }
 
-// Volunteers cell with sign-up button for Workday projects
-function VolunteersCell({ row, rowIndex, myName, onUpdate, onOpenSignup }) {
-  const isWorkday = row.project && row.project.trim().toLowerCase() === "workday";
-  const volunteers = parseVolunteers(row.volunteers);
-
-  if (!isWorkday) {
-    return (
-      <input type="text" className="ci" value={row.volunteers} placeholder="Volunteers"
-        onChange={e=>onUpdate(rowIndex,"volunteers",e.target.value)}/>
-    );
-  }
-
+function ItemFormModal({title, sub, initial, onSave, onClose, showAddedBy}) {
+  const [form, setForm] = useState({...initial});
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
   return (
-    <div className="signup-cell">
-      {volunteers.length > 0 && (
-        <div className="signup-names">
-          {volunteers.map((v,vi)=>{
-            const isMe = myName && parseCount(v).name.toLowerCase()===myName.toLowerCase();
-            return (
-              <span key={vi} className={"volunteer-tag"+(isMe?" is-me":"")}>
-                {isMe?"👤 ":""}{displayVolunteerName(v)}
-              </span>
-            );
-          })}
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <h2>{title}</h2>
+        <div className="modal-sub">{sub}</div>
+        <div className="field">
+          <label>Title / Description *</label>
+          <input placeholder="e.g. Mow the back field, Fix broken door handle..." value={form.title} onChange={e=>set('title',e.target.value)} autoFocus/>
         </div>
-      )}
-      <button className="signup-btn" onClick={()=>onOpenSignup(rowIndex)}>
-        {myName && volunteers.some(v=>parseCount(v).name.toLowerCase()===myName.toLowerCase())
-          ? "✅ Signed Up"
-          : "✋ Sign Up"}
-      </button>
-    </div>
-  );
-}
-
-function App() {
-  const [rows, setRows] = useState([newRow()]);
-  const [filter, setFilter] = useState("All");
-  const [syncStatus, setSyncStatus] = useState("saving");
-  const [loaded, setLoaded] = useState(false);
-  const [notes, setNotes] = useState(()=>{ try{return localStorage.getItem(LS_NOTES)||"";}catch{return "";} });
-  const [notesSaved, setNotesSaved] = useState(false);
-  const [nextMeeting, setNextMeeting] = useState(()=>{ try{return localStorage.getItem(LS_MEETING)||"";}catch{return "";} });
-  const [meetingSaved, setMeetingSaved] = useState(false);
-  const [showSetup, setShowSetup] = useState(false);
-  const [myName, setMyName] = useState(()=>{ try{return localStorage.getItem(LS_MY_NAME)||"";}catch{return "";} });
-  const [signupRowIndex, setSignupRowIndex] = useState(null);
-  const autoSignupDone = useRef(false);
-  const debounceRef = useRef(null);
-  const notesRef = useRef(null);
-  const meetingRef = useRef(null);
-  const userChangedRef = useRef(false);
-
-  const loadFromSheets = () => {
-    setSyncStatus("saving");
-    let localData = [];
-    try { const s=localStorage.getItem(LS_ROWS); if(s) localData=JSON.parse(s); } catch{}
-    fetch(SCRIPT_URL+"?nocache="+Date.now()+"&r="+Math.random(), {cache:"no-store"})
-      .then(r=>r.json())
-      .then(data=>{
-        const sheetsRows=(data.rows||[]).filter(r=>r.project&&r.project.trim()!=="");
-        if(sheetsRows.length>0){
-          setRows(sheetsRows);
-          try{localStorage.setItem(LS_ROWS,JSON.stringify(sheetsRows));}catch{}
-        } else if(localData.length>0){
-          setRows(localData);
-        }
-        if(data.generalNotes!==undefined){
-          setNotes(data.generalNotes);
-          try{localStorage.setItem(LS_NOTES,data.generalNotes);}catch{}
-        }
-        if(data.nextMeeting!==undefined){
-          setNextMeeting(data.nextMeeting);
-          try{localStorage.setItem(LS_MEETING,data.nextMeeting);}catch{}
-        }
-        setSyncStatus("ok");
-        setLoaded(true);
-      })
-      .catch(()=>{
-        if(localData.length>0) setRows(localData);
-        setSyncStatus("err");
-        setLoaded(true);
-      });
-  };
-
-  useEffect(()=>{ loadFromSheets(); }, []);
-
-  // Auto-open signup popup if ?signup=workday is in the URL
-  useEffect(()=>{
-    if(!loaded || autoSignupDone.current) return;
-    const params = new URLSearchParams(window.location.search);
-    const target = params.get("signup");
-    if(!target) return;
-    const idx = rows.findIndex(r=>r.project&&r.project.trim().toLowerCase()===target.toLowerCase());
-    if(idx !== -1){
-      autoSignupDone.current = true;
-      setSignupRowIndex(idx);
-    }
-  }, [loaded, rows]);
-
-  useEffect(()=>{
-    const interval=setInterval(()=>{ if(!userChangedRef.current) loadFromSheets(); }, 30000);
-    return ()=>clearInterval(interval);
-  }, []);
-
-  useEffect(()=>{
-    if(!loaded||!userChangedRef.current) return;
-    try{localStorage.setItem(LS_ROWS,JSON.stringify(rows));}catch{}
-    setSyncStatus("saving");
-    clearTimeout(debounceRef.current);
-    debounceRef.current=setTimeout(()=>{
-      fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({rows,notes,nextMeeting})}).then(()=>setSyncStatus("ok")).catch(()=>setSyncStatus("err"));
-    },2000);
-    return ()=>clearTimeout(debounceRef.current);
-  }, [rows, loaded]);
-
-  const handleNotesChange = v => {
-    setNotes(v);
-    try{localStorage.setItem(LS_NOTES,v);}catch{}
-    setNotesSaved(true);
-    clearTimeout(notesRef.current);
-    notesRef.current=setTimeout(()=>{
-      setNotesSaved(false);
-      fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({rows,notes:v,nextMeeting})}).catch(()=>{});
-    },2000);
-  };
-
-  const handleMeetingChange = v => {
-    setNextMeeting(v);
-    try{localStorage.setItem(LS_MEETING,v);}catch{}
-    setMeetingSaved(true);
-    clearTimeout(meetingRef.current);
-    meetingRef.current=setTimeout(()=>{
-      setMeetingSaved(false);
-      fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({rows,notes,nextMeeting:v})}).catch(()=>{});
-    },2000);
-  };
-
-  const update = (i,k,v)=>{ userChangedRef.current=true; setRows(r=>r.map((row,idx)=>idx===i?{...row,[k]:v}:row)); };
-  const addRow = ()=>{ userChangedRef.current=true; setRows(r=>[...r,newRow()]); };
-  const removeRow = i=>{ userChangedRef.current=true; setRows(r=>r.filter((_,idx)=>idx!==i)); };
-
-  const handleNameChange = (name) => {
-    setMyName(name);
-    try{localStorage.setItem(LS_MY_NAME,name);}catch{}
-  };
-
-  const handleSignUp = (rowIndex, name, count) => {
-    const row = rows[rowIndex];
-    const volunteers = parseVolunteers(row.volunteers);
-    // Remove existing entry for this name if present
-    const filtered = volunteers.filter(v=>parseCount(v).name.toLowerCase()!==name.toLowerCase());
-    const entry = formatVolunteerEntry(name, count||1);
-    const updated = joinVolunteers([...filtered, entry]);
-    update(rowIndex, "volunteers", updated);
-  };
-
-  const handleLeave = (rowIndex, name) => {
-    const row = rows[rowIndex];
-    const volunteers = parseVolunteers(row.volunteers);
-    const updated = joinVolunteers(volunteers.filter(v=>parseCount(v).name.toLowerCase()!==name.toLowerCase()));
-    update(rowIndex, "volunteers", updated);
-  };
-
-  const exportXLSX = () => {
-    const hdr=COLS.map(c=>c.label), wb=XLSX.utils.book_new();
-    const cover=[["JP2 Independent School"],["FAC – Friday Afternoon Club"],["Project Tracker"],[],["Generated:",new Date().toLocaleDateString()],["Total Projects:",rows.length],["Teams:",[...new Set(rows.map(r=>r.team))].join(", ")]];
-    const wc=XLSX.utils.aoa_to_sheet(cover); wc["!cols"]=[{wch:20},{wch:50}];
-    XLSX.utils.book_append_sheet(wb,wc,"Overview");
-    const wa=XLSX.utils.aoa_to_sheet([hdr,...rows.map(r=>COLS.map(c=>r[c.key]))]);
-    wa["!cols"]=COLS.map(c=>({wch:c.w})); XLSX.utils.book_append_sheet(wb,wa,"All Projects");
-    TEAMS.forEach(team=>{
-      const tr=rows.filter(r=>r.team===team); if(!tr.length)return;
-      const ws=XLSX.utils.aoa_to_sheet([hdr,...tr.map(r=>COLS.map(c=>r[c.key]))]);
-      ws["!cols"]=COLS.map(c=>({wch:c.w})); XLSX.utils.book_append_sheet(wb,ws,team.substring(0,31));
-    });
-    XLSX.writeFile(wb,"FAC_ProjectTracker_JP2.xlsx");
-  };
-
-  const visible = filter==="All" ? rows : rows.filter(r=>r.team===filter);
-  const budget = rows.reduce((s,r)=>s+(parseFloat(r.estCost)||0),0);
-  const syncLabel={ok:"✔ Synced to Sheets",saving:"⏳ Saving...",err:"⚠ Sync Error",local:"💾 Local Only"}[syncStatus]||"⏳ Loading...";
-  const syncClass={ok:"sync-ok",saving:"sync-saving",err:"sync-err",local:"sync-local"}[syncStatus]||"sync-saving";
-  const workdayIndex = rows.findIndex(r=>r.project&&r.project.trim().toLowerCase()==="workday");
-  const workdayRow = workdayIndex !== -1 ? rows[workdayIndex] : null;
-
-  if(!loaded) return (
-    <div>
-      <div className="header">
-        <div><h1>⚒ Friday Afternoon Club</h1><div className="subtitle">JP2 Independent School — FAC Project Tracker</div></div>
-      </div>
-      <div className="loading">⏳ Loading your projects from Google Sheets...</div>
-    </div>
-  );
-
-  const signupRow = signupRowIndex !== null ? rows[signupRowIndex] : null;
-
-  return (
-    <div>
-      <div className="header">
-        <div><h1>⚒ Friday Afternoon Club</h1><div className="subtitle">JP2 Independent School — FAC Project Tracker</div></div>
-        <div className="header-right">
-          <span className={"sync-badge "+syncClass}>{syncLabel}</span>
-          <button className="btn btn-gray" onClick={loadFromSheets}>🔄 Reload</button>
-          <button className="btn btn-gray" onClick={()=>setShowSetup(true)}>⚙ Google Sheets</button>
-          <button className="btn btn-green" onClick={exportXLSX}>⬇ Download Excel</button>
-        </div>
-      </div>
-
-      <WorkdayBanner
-        workdayRow={workdayRow}
-        workdayIndex={workdayIndex}
-        myName={myName}
-        onOpenSignup={(idx)=>setSignupRowIndex(idx)}
-      />
-
-      <div className="info-row">
-        <div className="info-box">
-          <h3>📋 General Notes & Announcements</h3>
-          <textarea placeholder="Use this space for general FAC notes, announcements, reminders or anything the whole team should see..." value={notes} onChange={e=>handleNotesChange(e.target.value)}/>
-          <div className="saved-msg">{notesSaved?"✔ Saved":""}</div>
-        </div>
-        <div className="info-box">
-          <h3>📅 Next Meeting</h3>
-          <input type="date" className="ci" style={{maxWidth:"200px",fontSize:".85rem",padding:"8px 10px"}} value={nextMeeting} onChange={e=>handleMeetingChange(e.target.value)}/>
-          {nextMeeting && <div className="meeting-date">📆 {new Date(nextMeeting+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</div>}
-          <div className="saved-msg">{meetingSaved?"✔ Saved":""}</div>
-        </div>
-      </div>
-
-      <div className="stats">
-        {[{label:"Total Projects",val:rows.length},{label:"In Progress",val:rows.filter(r=>r.status==="In Progress").length},{label:"Completed",val:rows.filter(r=>r.status==="Completed").length},{label:"Est. Budget",val:"$"+budget.toLocaleString()}].map(s=>(
-          <div className="stat" key={s.label}><div className="stat-val">{s.val}</div><div className="stat-lbl">{s.label}</div></div>
-        ))}
-      </div>
-
-      <div className="filters">
-        {["All",...TEAMS].map(t=>(
-          <button key={t} className={"fbtn"+(filter===t?" active":"")} onClick={()=>setFilter(t)}>{t}</button>
-        ))}
-      </div>
-
-      <div className="table-wrap">
-        <table>
-          <thead><tr>{COLS.map(c=><th key={c.key}>{c.label}</th>)}<th></th></tr></thead>
-          <tbody>
-            {visible.map((row,fi)=>{
-              const i=rows.indexOf(row);
-              const isWorkday = row.project&&row.project.trim().toLowerCase()==="workday";
-              return (
-                <tr key={i} className={isWorkday?"workday-row":""}>
-                  {COLS.map(c=>(
-                    <td key={c.key}>
-                      {c.key==="project"&&isWorkday
-                        ? <><input type="text" className="ci" value={row.project} placeholder="Project Name" onChange={e=>update(i,"project",e.target.value)} style={{fontWeight:700}}/><span className="workday-row-badge">★ WORKDAY</span></>
-                      :c.key==="volunteers"
-                        ? <VolunteersCell row={row} rowIndex={i} myName={myName}
-                            onUpdate={update}
-                            onOpenSignup={(idx)=>setSignupRowIndex(idx)}/>
-                      :c.key==="team"?<select className="ci" value={row.team} onChange={e=>update(i,"team",e.target.value)}>{TEAMS.map(t=><option key={t}>{t}</option>)}</select>
-                      :c.key==="status"?<select className="ci" value={row.status} onChange={e=>update(i,"status",e.target.value)}>{STATUS.map(s=><option key={s}>{s}</option>)}</select>
-                      :(c.key==="startDate"||c.key==="endDate")?<input type="date" className="ci" value={row[c.key]} onChange={e=>update(i,c.key,e.target.value)}/>
-                      :(c.key==="estCost"||c.key==="actualCost")?<input type="number" className="ci" placeholder="0" value={row[c.key]} onChange={e=>update(i,c.key,e.target.value)}/>
-                      :(c.key==="description"||c.key==="notes")?<textarea className="ci" value={row[c.key]} placeholder={c.label} onChange={e=>update(i,c.key,e.target.value)} style={{minHeight:"60px",resize:"vertical"}}/>
-                      :<input type="text" className="ci" value={row[c.key]} placeholder={c.label} onChange={e=>update(i,c.key,e.target.value)}/>}
-                    </td>
-                  ))}
-                  <td><button className="del-btn" onClick={()=>removeRow(i)}>×</button></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <button className="btn btn-blue" style={{marginTop:14}} onClick={addRow}>+ Add Project</button>
-
-      <ProjectDonut rows={rows}/>
-
-      <div className="footer">Data auto-saves to Google Sheets. Auto-refreshes every 30 seconds.</div>
-
-      {/* Google Sheets setup modal */}
-      {showSetup&&(
-        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setShowSetup(false)}>
-          <div className="modal">
-            <h2>🔗 Google Sheets Connection</h2>
-            <p>Your app is pre-connected to Google Sheets. This URL is already configured:</p>
-            <input value={SCRIPT_URL} readOnly style={{background:"#f8fafc",color:"#6b7280"}}/>
-            <div className="modal-btns">
-              <button className="btn btn-gray" onClick={()=>setShowSetup(false)}>Close</button>
-            </div>
+        <div className="field-row">
+          <div className="field">
+            <label>Location</label>
+            <input placeholder="e.g. Main Building, Field..." value={form.location} onChange={e=>set('location',e.target.value)}/>
+          </div>
+          <div className="field">
+            <label>Priority</label>
+            <select value={form.priority} onChange={e=>set('priority',e.target.value)}>
+              {["Low","Medium","High","Urgent"].map(p=><option key={p}>{p}</option>)}
+            </select>
           </div>
         </div>
-      )}
-
-      {/* Sign-up modal */}
-      {signupRow !== null && (
-        <SignupModal
-          project={signupRow.project}
-          currentVolunteers={signupRow.volunteers}
-          myName={myName}
-          onClose={()=>setSignupRowIndex(null)}
-          onSignUp={(name, count)=>handleSignUp(signupRowIndex, name, count)}
-          onLeave={()=>handleLeave(signupRowIndex, myName)}
-          onNameChange={handleNameChange}
-        />
-      )}
+        {showAddedBy && (
+          <div className="field">
+            <label>Requested By</label>
+            <input placeholder="Your name (optional)" value={form.addedBy||''} onChange={e=>set('addedBy',e.target.value)}/>
+          </div>
+        )}
+        <div className="field">
+          <label>Notes</label>
+          <textarea placeholder="Any extra details, context, or instructions..." value={form.notes} onChange={e=>set('notes',e.target.value)}/>
+        </div>
+        <div className="modal-btns">
+          <button className="btn btn-gray" onClick={onClose}>Cancel</button>
+          <button className="btn btn-green" onClick={()=>{ if(!form.title.trim()) return alert('Please enter a title.'); onSave(form); }}>Save</button>
+        </div>
+      </div>
     </div>
   );
 }
+
+function SignupModal({item, myName, onClose, onSignup, onRemove}) {
+  const [nameInput, setNameInput] = useState(myName||"");
+  const [added, setAdded] = useState(false);
+
+  const handleAdd = () => {
+    if(!nameInput.trim()) return;
+    onSignup(nameInput.trim());
+    setNameInput("");
+    setAdded(true);
+  };
+
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="signup-modal">
+        <div style={{display:'flex',justifyContent:'flex-end'}}>
+          <button onClick={onClose} style={{background:'none',border:'none',fontSize:'1.4rem',color:'#94a3b8',cursor:'pointer',lineHeight:1}}>×</button>
+        </div>
+        <div className="icon">✋</div>
+        <h2>Volunteer for this task</h2>
+        <div className="task-name">{item.title}</div>
+
+        <div className="volunteer-input-row">
+          <input
+            placeholder="Enter name and click Add"
+            value={nameInput}
+            onChange={e=>{ setNameInput(e.target.value); setAdded(false); }}
+            onKeyDown={e=>e.key==="Enter"&&handleAdd()}
+            autoFocus
+          />
+          <button className="btn btn-green btn-sm" onClick={handleAdd}>Add</button>
+        </div>
+        {added && <div style={{fontSize:'.75rem',color:'var(--green)',fontWeight:600,marginBottom:8,textAlign:'center'}}>✔ Added! You can add more names or close.</div>}
+
+        {item.volunteers.length>0 && (
+          <div className="current-vols">
+            <div className="current-vols-title">Signed up ({item.volunteers.length})</div>
+            {item.volunteers.map((v,i)=>(
+              <span key={i} className="vol-remove">
+                👤 {v}
+                <button onClick={()=>onRemove(v)} title="Remove">×</button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <button className="big-join-btn" style={{marginTop:12}} onClick={onClose}>Close</button>
+      </div>
+    </div>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
