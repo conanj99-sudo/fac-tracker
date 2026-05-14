@@ -84,6 +84,21 @@
     .no-vols{font-size:.75rem;color:#94a3b8;font-style:italic}
     .card-actions{display:flex;gap:6px;flex-wrap:wrap}
 
+    /* SCHEDULE GRID */
+    .schedule-grid{margin-top:10px;display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--border);padding-top:10px}
+    .schedule-row{display:flex;align-items:flex-start;gap:10px;padding:5px 8px;border-radius:7px;background:var(--white);border:1px solid var(--border)}
+    .schedule-row-next{border-color:#93c5fd;background:#eff6ff}
+    .schedule-date{min-width:80px;font-size:.75rem;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:4px;flex-shrink:0;padding-top:2px}
+    .schedule-next-badge{background:#1d4ed8;color:white;border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:700}
+    .schedule-vols{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+
+    /* DATE PICKER */
+    .date-picker-box{background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:12px;border:1px solid var(--border)}
+    .date-check-row{display:flex;align-items:center;padding:7px 10px;border-radius:7px;cursor:pointer;font-size:.82rem;font-weight:500;color:var(--text);margin-bottom:3px;border:1.5px solid transparent;transition:all .15s;gap:0}
+    .date-check-row:hover{background:#e0f2fe}
+    .date-check-selected{background:#dbeafe;border-color:#93c5fd;font-weight:700}
+    .date-check-label{display:flex;align-items:center;flex:1}
+
     .card.missed{border-color:#fbbf24;background:#fffbeb}
     .missed-banner{background:#fef3c7;border-radius:7px;padding:6px 10px;font-size:.72rem;font-weight:700;color:#92400e;margin-bottom:8px;display:flex;align-items:center;gap:5px}
     .tag-freq{background:#e0f2fe;color:#0369a1}
@@ -161,24 +176,66 @@ const freqDays = {Daily:1, Weekly:7, 'Bi-Weekly':14, Monthly:30};
 
 // Advance a recurring task's due date if it has passed; flag as missed if not completed
 const advanceIfPast = (item) => {
-  if(!item.frequency || !item.nextDue) return item;
-  const due = parseDate(item.nextDue);
-  if(!due) return item;
+  const withSchedule = ensureSchedule(item);
+  const refreshed = refreshSchedule(withSchedule);
+  // Check if the first slot passed without being completed
   const t = today();
-  if(due >= t) return item; // not past yet
-  // Advance until next due date is in the future
-  const days = freqDays[item.frequency] || 7;
-  let next = new Date(due);
-  let wasMissed = !item.completedThisCycle;
-  while(next < t) next = addDays(next, days);
-  return {...item, nextDue: toISO(next), completedThisCycle: false, missedLast: wasMissed || item.missedLast};
+  const due = parseDate(item.nextDue);
+  if(due && due < t && !item.completedThisCycle){
+    return {...refreshed, missedLast: true, completedThisCycle: false};
+  }
+  return refreshed;
 };
 
-const newRecurring = () => ({
-  id: uid(), title:"", location:"", skill:"Any", priority:"Medium", notes:"",
-  volunteers:[], frequency:"Weekly", nextDue: toISO(addDays(today(),7)),
-  completedThisCycle: false, missedLast: false
-});
+// Generate next 8 occurrence dates from a starting nextDue
+const getNext8Dates = (nextDue, frequency) => {
+  if(!nextDue || !frequency) return [];
+  const days = freqDays[frequency] || 7;
+  let cur = parseDate(nextDue);
+  if(!cur) return [];
+  // If nextDue is in the past, advance to next future occurrence first
+  const t = today();
+  while(cur < t) cur = addDays(cur, days);
+  const dates = [];
+  for(let i=0; i<8; i++){
+    dates.push(toISO(cur));
+    cur = addDays(cur, days);
+  }
+  return dates;
+};
+
+// Migrate or build schedule array for a recurring item
+const ensureSchedule = (item) => {
+  if(item.schedule && Array.isArray(item.schedule) && item.schedule.length>0) return item;
+  const dates = getNext8Dates(item.nextDue, item.frequency);
+  return {...item, schedule: dates.map(d=>({date:d, volunteers: item.volunteers||[]}))};
+};
+
+// Keep schedule in sync — drop past dates, add new ones up to 8 future
+const refreshSchedule = (item) => {
+  const t = today();
+  const days = freqDays[item.frequency] || 7;
+  let existing = (item.schedule||[]).filter(s=>{ const d=parseDate(s.date); return d && d>=t; });
+  // Generate dates we need
+  const needed = 8;
+  while(existing.length < needed){
+    const lastDate = existing.length>0 ? parseDate(existing[existing.length-1].date) : (parseDate(item.nextDue)||today());
+    const next = addDays(lastDate, days);
+    existing.push({date: toISO(next), volunteers:[]});
+  }
+  existing = existing.slice(0, needed);
+  // Update nextDue to the first upcoming date
+  const nextDue = existing[0]?.date || item.nextDue;
+  return {...item, schedule: existing, nextDue};
+};
+const newRecurring = () => {
+  const base = {
+    id: uid(), title:"", location:"", skill:"Any", priority:"Medium", notes:"",
+    volunteers:[], frequency:"Weekly", nextDue: toISO(addDays(today(),7)),
+    completedThisCycle: false, missedLast: false, schedule:[]
+  };
+  return refreshSchedule(base);
+};
 const newOneOff = () => ({
   id: uid(), title:"", location:"", skill:"Any", priority:"Medium", notes:"", volunteers:[], done:false, addedBy:""
 });
@@ -279,15 +336,24 @@ function App() {
   const markRecurringDone = (id) => {
     const item = recurring.find(r=>r.id===id);
     const days = freqDays[item?.frequency] || 7;
-    const next = recurring.map(r=>r.id!==id?r:{
-      ...r, completedThisCycle: true, missedLast: false,
-      nextDue: toISO(addDays(today(), days))
-    });
-    setRecurring(next);
+    // Record history for the first slot
+    const firstSlot = item.schedule?.[0];
     const newHist = addHistoryEntry({
       id: uid(), type:'recurring', title: item.title, location: item.location||'',
-      volunteers: item.volunteers, completedDate: toISO(today()), frequency: item.frequency||'Weekly'
+      volunteers: firstSlot?.volunteers || item.volunteers,
+      completedDate: toISO(today()), frequency: item.frequency||'Weekly'
     }, history);
+    // Drop the first slot, add a new one 8 steps out
+    const oldSchedule = item.schedule||[];
+    const lastDate = oldSchedule.length>0 ? parseDate(oldSchedule[oldSchedule.length-1].date) : today();
+    const newSlot = {date: toISO(addDays(lastDate, days)), volunteers:[]};
+    const newSchedule = [...oldSchedule.slice(1), newSlot];
+    const next = recurring.map(r=>r.id!==id?r:{
+      ...r, completedThisCycle: true, missedLast: false,
+      nextDue: newSchedule[0]?.date || toISO(addDays(today(), days)),
+      schedule: newSchedule, volunteers: newSchedule[0]?.volunteers||[]
+    });
+    setRecurring(next);
     persist(next, oneoffs, newHist);
   };
 
@@ -314,13 +380,21 @@ function App() {
     persist(recurring, next, newHist);
   };
 
-  const handleVolunteerSignup = (type, id, name) => {
+  const handleVolunteerSignup = (type, id, name, dates) => {
     if(!name.trim()) return;
     if(type==='recurring'){
       const next = recurring.map(r=>{
         if(r.id!==id) return r;
-        if(r.volunteers.some(v=>v.toLowerCase()===name.trim().toLowerCase())) return r;
-        return {...r, volunteers:[...r.volunteers, name.trim()]};
+        // dates is an array of ISO date strings the volunteer picked
+        const selectedDates = dates || (r.schedule ? [r.schedule[0]?.date] : []);
+        const newSchedule = (r.schedule||[]).map(slot=>{
+          if(!selectedDates.includes(slot.date)) return slot;
+          if(slot.volunteers.some(v=>v.toLowerCase()===name.trim().toLowerCase())) return slot;
+          return {...slot, volunteers:[...slot.volunteers, name.trim()]};
+        });
+        // Keep legacy volunteers in sync with first slot
+        const firstSlotVols = newSchedule[0]?.volunteers || [];
+        return {...r, schedule: newSchedule, volunteers: firstSlotVols};
       });
       setRecurring(next); persist(next, oneoffs);
     } else {
@@ -333,9 +407,18 @@ function App() {
     }
   };
 
-  const handleVolunteerRemove = (type, id, name) => {
+  const handleVolunteerRemove = (type, id, name, date) => {
     if(type==='recurring'){
-      const next = recurring.map(r=>r.id!==id?r:{...r,volunteers:r.volunteers.filter(v=>v!==name)});
+      const next = recurring.map(r=>{
+        if(r.id!==id) return r;
+        const newSchedule = (r.schedule||[]).map(slot=>{
+          // If date specified, only remove from that slot; otherwise remove from all
+          if(date && slot.date!==date) return slot;
+          return {...slot, volunteers: slot.volunteers.filter(v=>v!==name)};
+        });
+        const firstSlotVols = newSchedule[0]?.volunteers || [];
+        return {...r, schedule: newSchedule, volunteers: firstSlotVols};
+      });
       setRecurring(next); persist(next, oneoffs);
     } else {
       const next = oneoffs.map(o=>o.id!==id?o:{...o,volunteers:o.volunteers.filter(v=>v!==name)});
@@ -413,7 +496,7 @@ function App() {
               onEdit={()=>setEditTarget({type:'recurring',item})}
               onDelete={()=>deleteRecurring(item.id)}
               onMarkDone={()=>markRecurringDone(item.id)}
-              onRemoveVol={(name)=>handleVolunteerRemove('recurring',item.id,name)}
+              onRemoveVol={(name, date)=>handleVolunteerRemove('recurring',item.id,name,date)}
             />
           ))}
         </div>
@@ -508,10 +591,11 @@ function App() {
       {signupTarget && signupItem && (
         <SignupModal
           item={signupItem}
+          type={signupTarget.type}
           myName={myName}
           onClose={()=>setSignupTarget(null)}
-          onSignup={(name)=>{ handleNameSave(name); handleVolunteerSignup(signupTarget.type, signupTarget.id, name); }}
-          onRemove={(name)=>handleVolunteerRemove(signupTarget.type, signupTarget.id, name)}
+          onSignup={(name, dates)=>{ handleNameSave(name); handleVolunteerSignup(signupTarget.type, signupTarget.id, name, dates); }}
+          onRemove={(name, date)=>handleVolunteerRemove(signupTarget.type, signupTarget.id, name, date)}
         />
       )}
 
@@ -527,8 +611,9 @@ function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, o
   const priorityClass = isDone ? 'done' : item.priority.toLowerCase();
   const isMissed = type==='recurring' && item.missedLast && !item.completedThisCycle;
   const due = type==='recurring' && item.nextDue ? parseDate(item.nextDue) : null;
-  const dueStr = due ? fmtDate(due) : null;
   const isOverdue = due && due < today();
+  const schedule = type==='recurring' ? (item.schedule||[]) : [];
+  const totalSignups = schedule.reduce((s,slot)=>s+slot.volunteers.length,0);
 
   return (
     <div className={`card ${priorityClass}${isMissed?' missed':''}`}>
@@ -544,43 +629,69 @@ function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, o
             {type==='recurring' && item.skill && item.skill!=='Any' && <span className="tag tag-skill">🛠 {item.skill}</span>}
             {item.location && <span className="tag tag-location">📍 {item.location}</span>}
             {item.addedBy && <span className="tag" style={{background:'#f1f5f9',color:'var(--muted)'}}>Requested by {item.addedBy}</span>}
-            {type==='recurring' && item.frequency && (
-              <span className="tag tag-freq">🔁 {item.frequency}</span>
-            )}
-            {type==='recurring' && dueStr && (
-              <span className={`tag ${isOverdue?'tag-overdue':'tag-due'}`}>
-                {isOverdue?'⏰ Overdue':'📅 Due'} {dueStr}
-              </span>
-            )}
+            {type==='recurring' && item.frequency && <span className="tag tag-freq">🔁 {item.frequency}</span>}
+            {type==='recurring' && isOverdue && <span className="tag tag-overdue">⏰ Overdue</span>}
           </div>
           {item.notes && <div className="card-notes">"{item.notes}"</div>}
         </div>
       </div>
-      <div className="card-bottom">
-        <div className="volunteers-list">
-          {item.volunteers.length===0
-            ? <span className="no-vols">{isDone?'—':'No volunteers yet — be the first!'}</span>
-            : item.volunteers.map((v,i)=>(
-              <span key={i} className="vol-tag">
-                👤 {v}
-                {!isDone && <button onClick={()=>onRemoveVol(v)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontWeight:700,fontSize:'.8rem',marginLeft:2,lineHeight:1}}>×</button>}
-              </span>
-            ))
-          }
+
+      {/* Schedule rows for recurring tasks */}
+      {type==='recurring' && schedule.length>0 && (
+        <div className="schedule-grid">
+          {schedule.map((slot,i)=>(
+            <div key={slot.date} className={`schedule-row${i===0?' schedule-row-next':''}`}>
+              <div className="schedule-date">
+                {i===0 && <span className="schedule-next-badge">Next</span>}
+                {fmtDate(slot.date)}
+              </div>
+              <div className="schedule-vols">
+                {slot.volunteers.length===0
+                  ? <span className="no-vols" style={{fontSize:'.7rem'}}>No one yet</span>
+                  : slot.volunteers.map((v,vi)=>(
+                    <span key={vi} className="vol-tag" style={{fontSize:'.68rem'}}>
+                      👤 {v}
+                      {!isDone && <button onClick={()=>onRemoveVol(v, slot.date)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontWeight:700,fontSize:'.75rem',marginLeft:2,lineHeight:1}}>×</button>}
+                    </span>
+                  ))
+                }
+              </div>
+            </div>
+          ))}
         </div>
-        {!isDone && (
-          <div className="card-actions">
-            {onSignup && <button className="btn btn-green btn-sm" onClick={onSignup}>✋ Volunteer</button>}
-            {type==='recurring' && onMarkDone && <button className="btn btn-sm" style={{background:'#f0fdf4',color:'#15803d',border:'1.5px solid #86efac',fontWeight:700}} onClick={onMarkDone}>✅ Done This Cycle</button>}
-            {type==='oneoff' && onMarkDone && <button className="btn btn-sm" style={{background:'#f0fdf4',color:'#15803d',border:'1.5px solid #86efac',fontWeight:700}} onClick={onMarkDone}>✅ Mark Fixed</button>}
-            {onEdit && <button className="btn btn-ghost btn-sm" onClick={onEdit}>✏️ Edit</button>}
-            {onDelete && <button className="btn btn-danger btn-sm" onClick={()=>{ if(window.confirm('Remove this item?')) onDelete(); }}>🗑</button>}
+      )}
+
+      {/* One-off volunteer list */}
+      {type==='oneoff' && (
+        <div className="card-bottom" style={{marginTop:10}}>
+          <div className="volunteers-list">
+            {item.volunteers.length===0
+              ? <span className="no-vols">{isDone?'—':'No volunteers yet — be the first!'}</span>
+              : item.volunteers.map((v,i)=>(
+                <span key={i} className="vol-tag">
+                  👤 {v}
+                  {!isDone && <button onClick={()=>onRemoveVol(v)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontWeight:700,fontSize:'.8rem',marginLeft:2,lineHeight:1}}>×</button>}
+                </span>
+              ))
+            }
           </div>
-        )}
-        {isDone && onDelete && (
+        </div>
+      )}
+
+      {!isDone && (
+        <div className="card-actions" style={{marginTop:10}}>
+          {onSignup && <button className="btn btn-green btn-sm" onClick={onSignup}>✋ Volunteer</button>}
+          {type==='recurring' && onMarkDone && <button className="btn btn-sm" style={{background:'#f0fdf4',color:'#15803d',border:'1.5px solid #86efac',fontWeight:700}} onClick={onMarkDone}>✅ Done This Cycle</button>}
+          {type==='oneoff' && onMarkDone && <button className="btn btn-sm" style={{background:'#f0fdf4',color:'#15803d',border:'1.5px solid #86efac',fontWeight:700}} onClick={onMarkDone}>✅ Mark Fixed</button>}
+          {onEdit && <button className="btn btn-ghost btn-sm" onClick={onEdit}>✏️ Edit</button>}
+          {onDelete && <button className="btn btn-danger btn-sm" onClick={()=>{ if(window.confirm('Remove this item?')) onDelete(); }}>🗑</button>}
+        </div>
+      )}
+      {isDone && onDelete && (
+        <div style={{marginTop:10}}>
           <button className="btn btn-danger btn-sm" onClick={()=>{ if(window.confirm('Remove this completed repair?')) onDelete(); }}>🗑 Remove</button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -642,20 +753,31 @@ function ItemFormModal({title, sub, initial, onSave, onClose, showAddedBy, isRec
   );
 }
 
-function SignupModal({item, myName, onClose, onSignup, onRemove}) {
+function SignupModal({item, type, myName, onClose, onSignup, onRemove}) {
   const [nameInput, setNameInput] = useState(myName||"");
   const [added, setAdded] = useState(false);
+  const [selectedDates, setSelectedDates] = useState(
+    type==='recurring' && item.schedule ? [item.schedule[0]?.date].filter(Boolean) : []
+  );
+
+  const toggleDate = (date) => {
+    setSelectedDates(prev => prev.includes(date) ? prev.filter(d=>d!==date) : [...prev, date]);
+  };
 
   const handleAdd = () => {
     if(!nameInput.trim()) return;
-    onSignup(nameInput.trim());
+    if(type==='recurring' && selectedDates.length===0) return;
+    onSignup(nameInput.trim(), type==='recurring' ? selectedDates : null);
     setNameInput("");
     setAdded(true);
   };
 
+  const isRecurring = type==='recurring';
+  const schedule = isRecurring ? (item.schedule||[]) : [];
+
   return (
     <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="signup-modal">
+      <div className="signup-modal" style={{width:'min(460px,100%)'}}>
         <div style={{display:'flex',justifyContent:'flex-end'}}>
           <button onClick={onClose} style={{background:'none',border:'none',fontSize:'1.4rem',color:'#94a3b8',cursor:'pointer',lineHeight:1}}>×</button>
         </div>
@@ -671,11 +793,42 @@ function SignupModal({item, myName, onClose, onSignup, onRemove}) {
             onKeyDown={e=>e.key==="Enter"&&handleAdd()}
             autoFocus
           />
-          <button className="btn btn-green btn-sm" onClick={handleAdd}>Add</button>
+          <button className="btn btn-green btn-sm" onClick={handleAdd}
+            disabled={isRecurring && selectedDates.length===0}
+            style={{opacity: isRecurring && selectedDates.length===0 ? 0.5 : 1}}>Add</button>
         </div>
         {added && <div style={{fontSize:'.75rem',color:'var(--green)',fontWeight:600,marginBottom:8,textAlign:'center'}}>✔ Added! You can add more names or close.</div>}
 
-        {item.volunteers.length>0 && (
+        {/* Date checkboxes for recurring */}
+        {isRecurring && (
+          <div className="date-picker-box">
+            <div className="current-vols-title">Select which dates you can help ({selectedDates.length} selected)</div>
+            {schedule.map((slot,i)=>{
+              const checked = selectedDates.includes(slot.date);
+              return (
+                <label key={slot.date} className={`date-check-row${checked?' date-check-selected':''}`}>
+                  <input type="checkbox" checked={checked} onChange={()=>toggleDate(slot.date)} style={{marginRight:8}}/>
+                  <span className="date-check-label">
+                    {i===0 && <span className="schedule-next-badge" style={{marginRight:4}}>Next</span>}
+                    {fmtDate(slot.date)}
+                  </span>
+                  {slot.volunteers.length>0 && (
+                    <span style={{marginLeft:'auto',fontSize:'.68rem',color:'var(--muted)'}}>
+                      {slot.volunteers.length} signed up
+                    </span>
+                  )}
+                </label>
+              );
+            })}
+            <div style={{display:'flex',gap:8,marginTop:6}}>
+              <button onClick={()=>setSelectedDates(schedule.map(s=>s.date))} className="btn btn-ghost btn-sm" style={{fontSize:'.7rem'}}>Select All</button>
+              <button onClick={()=>setSelectedDates([])} className="btn btn-ghost btn-sm" style={{fontSize:'.7rem'}}>Clear</button>
+            </div>
+          </div>
+        )}
+
+        {/* Current volunteers for one-off */}
+        {!isRecurring && item.volunteers.length>0 && (
           <div className="current-vols">
             <div className="current-vols-title">Signed up ({item.volunteers.length})</div>
             {item.volunteers.map((v,i)=>(
