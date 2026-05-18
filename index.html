@@ -65,7 +65,7 @@
     .card.high{border-color:#fed7aa;background:#fff7ed}
     .card.done{border-color:#bbf7d0;background:#f0fdf4;opacity:.75}
     .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
-    .card-title{font-size:.92rem;font-weight:700;color:var(--navy);flex:1}
+    .card-title{font-size:.92rem;font-weight:800;color:var(--navy);flex:1}
     .card-title.done-text{text-decoration:line-through;color:var(--muted)}
     .card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;align-items:center}
     .tag{font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
@@ -474,11 +474,11 @@ function App() {
       {/* Stats */}
       <div className="stats">
         <div className="stat"><div className="stat-val blue">{recurring.length}</div><div className="stat-lbl">Recurring Tasks</div></div>
-        <div className="stat"><div className="stat-val orange">{openRepairs}</div><div className="stat-lbl">Open Repairs</div></div>
+        <div className="stat"><div className="stat-val orange">{openRepairs}</div><div className="stat-lbl">Task Requests</div></div>
         <div className="stat"><div className="stat-val green">{coveredRecurring}/{recurring.length}</div><div className="stat-lbl">Tasks Covered</div></div>
         <div className="stat"><div className="stat-val green">{totalVols}</div><div className="stat-lbl">Total Volunteers</div></div>
         {urgentCount>0 && <div className="stat"><div className="stat-val red">{urgentCount}</div><div className="stat-lbl">Urgent Items</div></div>}
-        <div className="stat"><div className="stat-val" style={{color:'#94a3b8'}}>{oneoffs.filter(o=>o.done).length}</div><div className="stat-lbl">Repairs Done</div></div>
+        <div className="stat"><div className="stat-val" style={{color:'#94a3b8'}}>{oneoffs.filter(o=>o.done).length}</div><div className="stat-lbl">Tasks Completed</div></div>
       </div>
 
       {/* RECURRING SECTION */}
@@ -488,7 +488,7 @@ function App() {
             <div className="section-title">🔁 Recurring Tasks <span className="badge">{recurring.length}</span></div>
             <div className="section-desc">Ongoing maintenance — mowing, cleaning, inspections. These stay on the list.</div>
           </div>
-          <button className="btn btn-navy" onClick={()=>setShowAddRecurring(true)}>+ Add Task</button>
+          <button className="btn btn-navy" onClick={()=>setShowAddRecurring(true)}>+ Add Recurring Task</button>
         </div>
         <div className="cards">
           {recurring.length===0 && <div className="empty"><div className="empty-icon">🌿</div>No recurring tasks yet. Add one to get started!</div>}
@@ -508,14 +508,14 @@ function App() {
       <div className="section">
         <div className="section-header">
           <div>
-            <div className="section-title">🔧 One-Off Repairs <span className="badge">{openRepairs} open</span></div>
-            <div className="section-desc">Things that need fixing once. Mark as done when complete — anyone can add a request.</div>
+            <div className="section-title">📋 Task Requests <span className="badge">{openRepairs} open</span></div>
+            <div className="section-desc">One-time tasks that need attention. Mark as done when complete — anyone can submit a request.</div>
           </div>
-          <button className="btn btn-orange" onClick={()=>setShowAddOneOff(true)}>+ Request Repair</button>
+          <button className="btn btn-orange" onClick={()=>setShowAddOneOff(true)}>+ Request 1-Time Task</button>
         </div>
         <div className="cards">
           {oneoffs.filter(o=>!o.done).length===0 && oneoffs.filter(o=>o.done).length===0 &&
-            <div className="empty"><div className="empty-icon">🔧</div>No repairs requested yet. Something need fixing?</div>
+            <div className="empty"><div className="empty-icon">📋</div>No task requests yet. Something need doing?</div>
           }
           {/* Open repairs */}
           {oneoffs.filter(o=>!o.done).map(item=>(
@@ -562,8 +562,8 @@ function App() {
       {/* Add One-Off Modal */}
       {showAddOneOff && (
         <ItemFormModal
-          title="Request a Repair"
-          sub="Describe what needs fixing. Anyone can submit a request."
+          title="Request a 1-Time Task"
+          sub="Describe what needs doing. Anyone can submit a request."
           initial={newOneOff()}
           onSave={(item)=>{ addOneOff(item); setShowAddOneOff(false); }}
           onClose={()=>setShowAddOneOff(false)}
