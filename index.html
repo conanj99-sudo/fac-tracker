@@ -603,7 +603,7 @@ function App() {
 
       {/* History Modal */}
       {showHistory && (
-        <HistoryModal history={history} onClose={()=>setShowHistory(false)} />
+        <HistoryModal history={history} oneoffs={oneoffs} onClose={()=>setShowHistory(false)} />
       )}
     </div>
   );
@@ -867,20 +867,28 @@ function SignupModal({item, type, myName, onClose, onSignup, onRemove}) {
   );
 }
 
-function HistoryModal({history, onClose}) {
+function HistoryModal({history, oneoffs, onClose}) {
   const [tab, setTab] = useState('completed');
+
+  // Merge logged history with any completed oneoffs not already in history
+  const loggedIds = new Set(history.map(h=>h.id));
+  const missingDone = oneoffs.filter(o=>o.done && !loggedIds.has(o.id)).map(o=>({
+    id: o.id, type:'repair', title: o.title, location: o.location||'',
+    volunteers: o.volunteers||[], completedDate: o.completedDate||'',
+    addedBy: o.addedBy||''
+  }));
+  const allHistory = [...history, ...missingDone];
 
   // Build volunteer summary: name -> [{title, date, type}]
   const volMap = {};
-  history.forEach(entry => {
+  allHistory.forEach(entry => {
     (entry.volunteers||[]).forEach(name => {
       if(!volMap[name]) volMap[name] = [];
       volMap[name].push({title: entry.title, date: entry.completedDate, type: entry.type});
     });
   });
   const volList = Object.entries(volMap).sort((a,b)=>b[1].length-a[1].length);
-
-  const completed = [...history].sort((a,b)=>b.completedDate?.localeCompare(a.completedDate||'')||0);
+  const completed = [...allHistory].sort((a,b)=>(b.completedDate||'').localeCompare(a.completedDate||''));
 
   return (
     <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
