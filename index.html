@@ -270,10 +270,41 @@ function App() {
   };
 
   const addHistoryEntry = (entry, currentHistory) => {
-    const next = [entry, ...currentHistory].slice(0, 500); // keep last 500 entries
+    const next = [entry, ...currentHistory].slice(0, 500);
     setHistory(next);
     try{localStorage.setItem(LS_HISTORY,JSON.stringify(next));}catch{}
     return next;
+  };
+
+  const updateHistoryEntry = (updated) => {
+    // If it's a history log entry, update history
+    const inHistory = history.some(h=>h.id===updated.id);
+    if(inHistory){
+      const next = history.map(h=>h.id===updated.id?updated:h);
+      setHistory(next);
+      try{localStorage.setItem(LS_HISTORY,JSON.stringify(next));}catch{}
+      saveToSheets(recurring, oneoffs, next);
+    } else {
+      // It's a completed oneoff fallback — update the oneoff record
+      const next = oneoffs.map(o=>o.id===updated.id?{...o, title:updated.title, location:updated.location, volunteers:updated.volunteers}:o);
+      setOneoffs(next);
+      persist(recurring, next, history);
+    }
+  };
+
+  const deleteHistoryEntry = (id) => {
+    const inHistory = history.some(h=>h.id===id);
+    if(inHistory){
+      const next = history.filter(h=>h.id!==id);
+      setHistory(next);
+      try{localStorage.setItem(LS_HISTORY,JSON.stringify(next));}catch{}
+      saveToSheets(recurring, oneoffs, next);
+    } else {
+      // Remove from oneoffs entirely
+      const next = oneoffs.filter(o=>o.id!==id);
+      setOneoffs(next);
+      persist(recurring, next, history);
+    }
   };
 
   const loadFromSheets = () => {
@@ -603,7 +634,13 @@ function App() {
 
       {/* History Modal */}
       {showHistory && (
-        <HistoryModal history={history} oneoffs={oneoffs} onClose={()=>setShowHistory(false)} />
+        <HistoryModal
+          history={history}
+          oneoffs={oneoffs}
+          onClose={()=>setShowHistory(false)}
+          onUpdate={updateHistoryEntry}
+          onDelete={deleteHistoryEntry}
+        />
       )}
     </div>
   );
@@ -867,8 +904,10 @@ function SignupModal({item, type, myName, onClose, onSignup, onRemove}) {
   );
 }
 
-function HistoryModal({history, oneoffs, onClose}) {
+function HistoryModal({history, oneoffs, onClose, onUpdate, onDelete}) {
   const [tab, setTab] = useState('completed');
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
 
   // Merge logged history with any completed oneoffs not already in history
   const loggedIds = new Set(history.map(h=>h.id));
@@ -879,7 +918,6 @@ function HistoryModal({history, oneoffs, onClose}) {
   }));
   const allHistory = [...history, ...missingDone];
 
-  // Build volunteer summary: name -> [{title, date, type}]
   const volMap = {};
   allHistory.forEach(entry => {
     (entry.volunteers||[]).forEach(name => {
@@ -890,47 +928,86 @@ function HistoryModal({history, oneoffs, onClose}) {
   const volList = Object.entries(volMap).sort((a,b)=>b[1].length-a[1].length);
   const completed = [...allHistory].sort((a,b)=>(b.completedDate||'').localeCompare(a.completedDate||''));
 
+  const startEdit = (entry) => {
+    setEditingId(entry.id);
+    setEditForm({...entry, volunteersText: (entry.volunteers||[]).join(', ')});
+  };
+  const saveEdit = () => {
+    const updated = {
+      ...editForm,
+      volunteers: editForm.volunteersText.split(',').map(v=>v.trim()).filter(Boolean)
+    };
+    onUpdate(updated);
+    setEditingId(null);
+  };
+
   return (
     <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="modal" style={{width:'min(580px,100%)',padding:'0'}}>
-        {/* Modal header */}
+      <div className="modal" style={{width:'min(600px,100%)',padding:'0'}}>
         <div style={{padding:'20px 24px 0',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <h2 style={{fontSize:'1.1rem',fontWeight:800,color:'var(--navy)'}}>📋 History</h2>
           <button onClick={onClose} style={{background:'none',border:'none',fontSize:'1.4rem',color:'#94a3b8',cursor:'pointer',lineHeight:1}}>×</button>
         </div>
-        {/* Tabs */}
         <div style={{display:'flex',gap:0,padding:'12px 24px 0',borderBottom:'1px solid var(--border)'}}>
-          {[['completed','✅ Completed Tasks & Repairs'],['volunteers','👤 Past Volunteers']].map(([key,label])=>(
+          {[['completed','✅ Completed Tasks'],['volunteers','👤 Past Volunteers']].map(([key,label])=>(
             <button key={key} onClick={()=>setTab(key)} style={{
               background:'none',border:'none',padding:'8px 16px',fontFamily:'DM Sans,sans-serif',
-              fontSize:'.82rem',fontWeight:700,cursor:'pointer',borderBottom: tab===key?'2px solid var(--navy)':'2px solid transparent',
+              fontSize:'.82rem',fontWeight:700,cursor:'pointer',
+              borderBottom: tab===key?'2px solid var(--navy)':'2px solid transparent',
               color: tab===key?'var(--navy)':'var(--muted)',transition:'all .15s'
             }}>{label}</button>
           ))}
         </div>
-        {/* Tab content */}
-        <div style={{padding:'16px 24px 24px',maxHeight:'60vh',overflowY:'auto'}}>
+        <div style={{padding:'16px 24px 24px',maxHeight:'62vh',overflowY:'auto'}}>
           {tab==='completed' && (
             completed.length===0
-              ? <div className="empty"><div className="empty-icon">📭</div>No completed tasks or repairs yet.</div>
+              ? <div className="empty"><div className="empty-icon">📭</div>No completed tasks yet.</div>
               : completed.map(entry=>(
                 <div key={entry.id} style={{borderBottom:'1px solid var(--border)',paddingBottom:'12px',marginBottom:'12px'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
-                    <span style={{fontWeight:700,fontSize:'.88rem',color:'var(--navy)',flex:1}}>{entry.title}</span>
-                    <span className={`tag ${entry.type==='repair'?'tag-priority-low':'tag-freq'}`}>
-                      {entry.type==='repair'?'🔧 Repair':'🔁 '+entry.frequency}
-                    </span>
-                    <span style={{fontSize:'.72rem',color:'var(--muted)',fontWeight:600}}>
-                      ✅ {entry.completedDate ? fmtDate(entry.completedDate) : '—'}
-                    </span>
-                  </div>
-                  {entry.location && <div style={{fontSize:'.75rem',color:'var(--muted)',marginTop:'3px'}}>📍 {entry.location}</div>}
-                  {entry.volunteers?.length>0 && (
-                    <div style={{marginTop:'5px',display:'flex',flexWrap:'wrap',gap:'4px'}}>
-                      {entry.volunteers.map((v,i)=><span key={i} className="vol-tag" style={{fontSize:'.68rem'}}>👤 {v}</span>)}
+                  {editingId===entry.id ? (
+                    // Edit form
+                    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                      <input value={editForm.title||''} onChange={e=>setEditForm(f=>({...f,title:e.target.value}))}
+                        style={{border:'1.5px solid #93c5fd',borderRadius:7,padding:'6px 10px',fontSize:'.85rem',fontFamily:'DM Sans,sans-serif',fontWeight:700}}
+                        placeholder="Title"/>
+                      <input value={editForm.location||''} onChange={e=>setEditForm(f=>({...f,location:e.target.value}))}
+                        style={{border:'1.5px solid var(--border)',borderRadius:7,padding:'6px 10px',fontSize:'.82rem',fontFamily:'DM Sans,sans-serif'}}
+                        placeholder="Location"/>
+                      <div>
+                        <div style={{fontSize:'.7rem',fontWeight:700,color:'var(--muted)',marginBottom:3,textTransform:'uppercase',letterSpacing:'.04em'}}>Volunteers (comma separated)</div>
+                        <input value={editForm.volunteersText||''} onChange={e=>setEditForm(f=>({...f,volunteersText:e.target.value}))}
+                          style={{width:'100%',border:'1.5px solid var(--border)',borderRadius:7,padding:'6px 10px',fontSize:'.82rem',fontFamily:'DM Sans,sans-serif'}}
+                          placeholder="John, Jane, Bob"/>
+                      </div>
+                      <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+                        <button className="btn btn-gray btn-sm" onClick={()=>setEditingId(null)}>Cancel</button>
+                        <button className="btn btn-green btn-sm" onClick={saveEdit}>Save</button>
+                      </div>
                     </div>
+                  ) : (
+                    // Display row
+                    <>
+                      <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                        <span style={{fontWeight:700,fontSize:'.88rem',color:'var(--navy)',flex:1}}>{entry.title}</span>
+                        <span className={`tag ${entry.type==='repair'?'tag-priority-low':'tag-freq'}`}>
+                          {entry.type==='repair'?'🔧 Task':'🔁 '+entry.frequency}
+                        </span>
+                        <span style={{fontSize:'.72rem',color:'var(--muted)',fontWeight:600}}>
+                          ✅ {entry.completedDate ? fmtDate(entry.completedDate) : '—'}
+                        </span>
+                        <button onClick={()=>startEdit(entry)} style={{background:'none',border:'none',cursor:'pointer',fontSize:'.78rem',color:'var(--muted)',padding:'2px 4px'}} title="Edit">✏️</button>
+                        <button onClick={()=>{ if(window.confirm('Remove this entry from history?')) onDelete(entry.id); }}
+                          style={{background:'none',border:'none',cursor:'pointer',fontSize:'.78rem',color:'#ef4444',padding:'2px 4px'}} title="Delete">🗑</button>
+                      </div>
+                      {entry.location && <div style={{fontSize:'.75rem',color:'var(--muted)',marginTop:'3px'}}>📍 {entry.location}</div>}
+                      {entry.volunteers?.length>0
+                        ? <div style={{marginTop:'5px',display:'flex',flexWrap:'wrap',gap:'4px'}}>
+                            {entry.volunteers.map((v,i)=><span key={i} className="vol-tag" style={{fontSize:'.68rem'}}>👤 {v}</span>)}
+                          </div>
+                        : <div style={{fontSize:'.72rem',color:'#94a3b8',marginTop:'4px',fontStyle:'italic'}}>No volunteers recorded</div>
+                      }
+                    </>
                   )}
-                  {!entry.volunteers?.length && <div style={{fontSize:'.72rem',color:'#94a3b8',marginTop:'4px',fontStyle:'italic'}}>No volunteers recorded</div>}
                 </div>
               ))
           )}
