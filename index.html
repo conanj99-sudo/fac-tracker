@@ -359,7 +359,8 @@ function App() {
     setRecurring(next); persist(next, oneoffs);
   };
   const updateRecurring = (item) => {
-    const next = recurring.map(r=>r.id===item.id?item:r);
+    const refreshed = refreshSchedule({...item, schedule:[]});
+    const next = recurring.map(r=>r.id===item.id?refreshed:r);
     setRecurring(next); persist(next, oneoffs);
   };
   const deleteRecurring = (id) => {
@@ -544,7 +545,8 @@ function App() {
               onDelete={()=>deleteRecurring(item.id)}
               onMarkDone={()=>markRecurringDone(item.id)}
               onUndo={lastCompleted?.id===item.id ? undoRecurringDone : null}
-              onRemoveVol={(name, date)=>handleVolunteerRemove('recurring',item.id,name,date)}
+              onRemoveVol={(name,date)=>handleVolunteerRemove('recurring',item.id,name,date)}
+              history={history}
             />
           ))}
         </div>
@@ -661,8 +663,9 @@ function App() {
   );
 }
 
-function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, onUndo, onRemoveVol}) {
+function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, onUndo, onRemoveVol, history}) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [pastOpen, setPastOpen] = useState(false);
   const priorityClass = isDone ? 'done' : item.priority.toLowerCase();
   const isMissed = type==='recurring' && item.missedLast && !item.completedThisCycle;
   const isCompletedThisCycle = type==='recurring' && item.completedThisCycle;
@@ -671,6 +674,12 @@ function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, o
   const schedule = type==='recurring' ? (item.schedule||[]) : [];
   const totalSignups = schedule.reduce((s,slot)=>s+slot.volunteers.length,0);
   const nextSlot = schedule[0];
+
+  // Filter history for this specific task by title match
+  const pastCompletions = type==='recurring' && history
+    ? history.filter(h=>h.type==='recurring' && h.title?.toLowerCase()===item.title?.toLowerCase())
+        .sort((a,b)=>(b.completedDate||'').localeCompare(a.completedDate||''))
+    : [];
 
   return (
     <div className={`card ${priorityClass}${isMissed?' missed':''}`}>
@@ -736,6 +745,45 @@ function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, o
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Past completions dropdown for recurring tasks */}
+      {type==='recurring' && !isDone && (
+        <div style={{marginTop:6}}>
+          <button
+            className="schedule-toggle"
+            style={{borderColor: pastCompletions.length>0 ? '#86efac' : undefined}}
+            onClick={()=>setPastOpen(o=>!o)}
+          >
+            <span>🕓 Past Completions</span>
+            <span style={{display:'flex',alignItems:'center',gap:6}}>
+              <span style={{fontSize:'.68rem',background: pastCompletions.length>0?'#dcfce7':'#f1f5f9',color:pastCompletions.length>0?'#15803d':'#94a3b8',borderRadius:'999px',padding:'1px 7px',fontWeight:700}}>
+                {pastCompletions.length} {pastCompletions.length===1?'time':'times'}
+              </span>
+              <span style={{fontSize:'.8rem',transition:'transform .2s',display:'inline-block',transform:pastOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
+            </span>
+          </button>
+          {pastOpen && (
+            <div className="schedule-grid">
+              {pastCompletions.length===0
+                ? <div style={{padding:'8px 10px',fontSize:'.75rem',color:'#94a3b8',fontStyle:'italic'}}>No completions recorded yet.</div>
+                : pastCompletions.map((entry,i)=>(
+                  <div key={i} className="schedule-row">
+                    <div className="schedule-date">✅ {entry.completedDate ? fmtDate(entry.completedDate) : '—'}</div>
+                    <div className="schedule-vols">
+                      {(entry.volunteers||[]).length===0
+                        ? <span className="no-vols" style={{fontSize:'.7rem'}}>No volunteers recorded</span>
+                        : (entry.volunteers||[]).map((v,vi)=>(
+                          <span key={vi} className="vol-tag" style={{fontSize:'.68rem'}}>👤 {v}</span>
+                        ))
+                      }
+                    </div>
+                  </div>
+                ))
+              }
             </div>
           )}
         </div>
@@ -991,7 +1039,7 @@ function HistoryModal({history, oneoffs, onClose, onUpdate, onDelete}) {
                 <div key={entry.id} style={{borderBottom:'1px solid var(--border)',paddingBottom:'12px',marginBottom:'12px'}}>
                   {editingId===entry.id ? (
                     // Edit form
-                    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                    <div style={{display:'flex',flexDirection:'column',gap:8}} onClick={e=>e.stopPropagation()}>
                       <input value={editForm.title||''} onChange={e=>setEditForm(f=>({...f,title:e.target.value}))}
                         style={{border:'1.5px solid #93c5fd',borderRadius:7,padding:'6px 10px',fontSize:'.85rem',fontFamily:'DM Sans,sans-serif',fontWeight:700}}
                         placeholder="Title"/>
@@ -1000,8 +1048,11 @@ function HistoryModal({history, oneoffs, onClose, onUpdate, onDelete}) {
                         placeholder="Location"/>
                       <div>
                         <div style={{fontSize:'.7rem',fontWeight:700,color:'var(--muted)',marginBottom:3,textTransform:'uppercase',letterSpacing:'.04em'}}>Volunteers (comma separated)</div>
-                        <input value={editForm.volunteersText||''} onChange={e=>setEditForm(f=>({...f,volunteersText:e.target.value}))}
-                          style={{width:'100%',border:'1.5px solid var(--border)',borderRadius:7,padding:'6px 10px',fontSize:'.82rem',fontFamily:'DM Sans,sans-serif'}}
+                        <input
+                          value={editForm.volunteersText||''}
+                          onChange={e=>setEditForm(f=>({...f,volunteersText:e.target.value}))}
+                          onClick={e=>e.stopPropagation()}
+                          style={{width:'100%',border:'1.5px solid #93c5fd',borderRadius:7,padding:'6px 10px',fontSize:'.82rem',fontFamily:'DM Sans,sans-serif'}}
                           placeholder="John, Jane, Bob"/>
                       </div>
                       <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
