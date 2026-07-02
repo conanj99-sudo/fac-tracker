@@ -547,6 +547,7 @@ function App() {
               onUndo={lastCompleted?.id===item.id ? undoRecurringDone : null}
               onRemoveVol={(name,date)=>handleVolunteerRemove('recurring',item.id,name,date)}
               history={history}
+              onUpdateHistory={updateHistoryEntry}
             />
           ))}
         </div>
@@ -663,7 +664,50 @@ function App() {
   );
 }
 
-function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, onUndo, onRemoveVol, history}) {
+function PastCompletionRow({entry, onUpdate}) {
+  const [editing, setEditing] = useState(false);
+  const [volText, setVolText] = useState((entry.volunteers||[]).join(', '));
+
+  const save = () => {
+    const updated = {...entry, volunteers: volText.split(',').map(v=>v.trim()).filter(Boolean)};
+    onUpdate(updated);
+    setEditing(false);
+  };
+
+  return (
+    <div className="schedule-row">
+      <div className="schedule-date" style={{minWidth:70}}>✅ {entry.completedDate ? fmtDate(entry.completedDate) : '—'}</div>
+      <div className="schedule-vols" style={{flex:1}}>
+        {editing ? (
+          <div style={{display:'flex',gap:6,alignItems:'center',width:'100%'}} onClick={e=>e.stopPropagation()}>
+            <input
+              value={volText}
+              onChange={e=>setVolText(e.target.value)}
+              placeholder="John, Jane, Bob"
+              autoFocus
+              style={{flex:1,border:'1.5px solid #93c5fd',borderRadius:6,padding:'3px 8px',fontSize:'.75rem',fontFamily:'DM Sans,sans-serif'}}
+            />
+            <button className="btn btn-green btn-sm" style={{padding:'3px 10px',fontSize:'.7rem'}} onClick={save}>Save</button>
+            <button className="btn btn-gray btn-sm" style={{padding:'3px 8px',fontSize:'.7rem'}} onClick={()=>setEditing(false)}>✕</button>
+          </div>
+        ) : (
+          <>
+            {(entry.volunteers||[]).length===0
+              ? <span className="no-vols" style={{fontSize:'.7rem'}}>No volunteers recorded</span>
+              : (entry.volunteers||[]).map((v,vi)=>(
+                <span key={vi} className="vol-tag" style={{fontSize:'.68rem'}}>👤 {v}</span>
+              ))
+            }
+            <button onClick={()=>{ setVolText((entry.volunteers||[]).join(', ')); setEditing(true); }}
+              style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:'.72rem',marginLeft:4,padding:'1px 4px'}}>✏️</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, onUndo, onRemoveVol, history, onUpdateHistory}) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
   const priorityClass = isDone ? 'done' : item.priority.toLowerCase();
@@ -771,17 +815,7 @@ function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, o
               {pastCompletions.length===0
                 ? <div style={{padding:'8px 10px',fontSize:'.75rem',color:'#94a3b8',fontStyle:'italic'}}>No completions recorded yet.</div>
                 : pastCompletions.map((entry,i)=>(
-                  <div key={i} className="schedule-row">
-                    <div className="schedule-date">✅ {entry.completedDate ? fmtDate(entry.completedDate) : '—'}</div>
-                    <div className="schedule-vols">
-                      {(entry.volunteers||[]).length===0
-                        ? <span className="no-vols" style={{fontSize:'.7rem'}}>No volunteers recorded</span>
-                        : (entry.volunteers||[]).map((v,vi)=>(
-                          <span key={vi} className="vol-tag" style={{fontSize:'.68rem'}}>👤 {v}</span>
-                        ))
-                      }
-                    </div>
-                  </div>
+                  <PastCompletionRow key={i} entry={entry} onUpdate={onUpdateHistory} />
                 ))
               }
             </div>
