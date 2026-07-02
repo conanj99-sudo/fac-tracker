@@ -218,15 +218,19 @@ const refreshSchedule = (item) => {
   const t = today();
   const days = freqDays[item.frequency] || 7;
   let existing = (item.schedule||[]).filter(s=>{ const d=parseDate(s.date); return d && d>=t; });
-  // Generate dates we need
   const needed = 8;
+  // If schedule is empty, seed it with the nextDue date itself as the first slot
+  if(existing.length===0){
+    const start = parseDate(item.nextDue) || today();
+    existing.push({date: toISO(start), volunteers: item.volunteers||[]});
+  }
+  // Fill remaining slots by adding the frequency interval
   while(existing.length < needed){
-    const lastDate = existing.length>0 ? parseDate(existing[existing.length-1].date) : (parseDate(item.nextDue)||today());
+    const lastDate = parseDate(existing[existing.length-1].date);
     const next = addDays(lastDate, days);
     existing.push({date: toISO(next), volunteers:[]});
   }
   existing = existing.slice(0, needed);
-  // Update nextDue to the first upcoming date
   const nextDue = existing[0]?.date || item.nextDue;
   return {...item, schedule: existing, nextDue};
 };
@@ -359,8 +363,26 @@ function App() {
     setRecurring(next); persist(next, oneoffs);
   };
   const updateRecurring = (item) => {
-    const refreshed = refreshSchedule({...item, schedule:[]});
-    const next = recurring.map(r=>r.id===item.id?refreshed:r);
+    const original = recurring.find(r=>r.id===item.id);
+    // If the Next Due Date was changed, rebuild the schedule from the new date.
+    // Otherwise keep the existing schedule (preserving volunteer sign-ups).
+    const dueDateChanged = original && original.nextDue !== item.nextDue;
+    let updated;
+    if(dueDateChanged){
+      // Rebuild from the new date, but carry over any volunteers already on matching dates
+      const oldSlots = {};
+      (original.schedule||[]).forEach(s=>{ oldSlots[s.date] = s.volunteers; });
+      const rebuilt = refreshSchedule({...item, schedule:[]});
+      rebuilt.schedule = rebuilt.schedule.map(slot=>({
+        ...slot,
+        volunteers: oldSlots[slot.date] || slot.volunteers
+      }));
+      updated = rebuilt;
+    } else {
+      // Keep the existing schedule intact, just update the other fields
+      updated = {...item, schedule: original?.schedule || item.schedule};
+    }
+    const next = recurring.map(r=>r.id===item.id?updated:r);
     setRecurring(next); persist(next, oneoffs);
   };
   const deleteRecurring = (id) => {
