@@ -311,16 +311,6 @@ function App() {
     }
   };
 
-  const logPastCompletion = (title, date, volunteers, notes, frequency) => {
-    const entry = {
-      id: uid(), type:'recurring', title, location:'',
-      volunteers: volunteers||[], completedDate: date,
-      frequency: frequency||'Weekly', notes: notes||''
-    };
-    const next = addHistoryEntry(entry, history);
-    saveToSheets(recurring, oneoffs, next);
-  };
-
   const loadFromSheets = () => {
     setSyncStatus("saving");
     let localR=[], localO=[];
@@ -578,10 +568,6 @@ function App() {
               onMarkDone={()=>markRecurringDone(item.id)}
               onUndo={lastCompleted?.id===item.id ? undoRecurringDone : null}
               onRemoveVol={(name,date)=>handleVolunteerRemove('recurring',item.id,name,date)}
-              history={history}
-              onUpdateHistory={updateHistoryEntry}
-              onDeleteHistory={deleteHistoryEntry}
-              onLogPast={logPastCompletion}
             />
           ))}
         </div>
@@ -698,58 +684,8 @@ function App() {
   );
 }
 
-function PastCompletionRow({entry, onUpdate, onDelete}) {
-  const [editing, setEditing] = useState(false);
-  const [volText, setVolText] = useState((entry.volunteers||[]).join(', '));
-
-  const save = () => {
-    const updated = {...entry, volunteers: volText.split(',').map(v=>v.trim()).filter(Boolean)};
-    onUpdate(updated);
-    setEditing(false);
-  };
-
-  return (
-    <div className="schedule-row">
-      <div className="schedule-date" style={{minWidth:70}}>✅ {entry.completedDate ? fmtDate(entry.completedDate) : '—'}</div>
-      <div className="schedule-vols" style={{flex:1}}>
-        {editing ? (
-          <div style={{display:'flex',gap:6,alignItems:'center',width:'100%'}} onClick={e=>e.stopPropagation()}>
-            <input
-              value={volText}
-              onChange={e=>setVolText(e.target.value)}
-              placeholder="John, Jane, Bob"
-              autoFocus
-              style={{flex:1,border:'1.5px solid #93c5fd',borderRadius:6,padding:'3px 8px',fontSize:'.75rem',fontFamily:'DM Sans,sans-serif'}}
-            />
-            <button className="btn btn-green btn-sm" style={{padding:'3px 10px',fontSize:'.7rem'}} onClick={save}>Save</button>
-            <button className="btn btn-gray btn-sm" style={{padding:'3px 8px',fontSize:'.7rem'}} onClick={()=>setEditing(false)}>✕</button>
-          </div>
-        ) : (
-          <>
-            {(entry.volunteers||[]).length===0
-              ? <span className="no-vols" style={{fontSize:'.7rem'}}>No volunteers recorded</span>
-              : (entry.volunteers||[]).map((v,vi)=>(
-                <span key={vi} className="vol-tag" style={{fontSize:'.68rem'}}>👤 {v}</span>
-              ))
-            }
-            <button onClick={()=>{ setVolText((entry.volunteers||[]).join(', ')); setEditing(true); }}
-              style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:'.72rem',marginLeft:4,padding:'1px 4px'}}>✏️</button>
-            {onDelete && <button onClick={()=>{ if(window.confirm('Remove this completion record?')) onDelete(entry.id); }}
-              style={{background:'none',border:'none',cursor:'pointer',color:'#ef4444',fontSize:'.72rem',padding:'1px 4px'}}>🗑</button>}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, onUndo, onRemoveVol, history, onUpdateHistory, onDeleteHistory, onLogPast}) {
+function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, onUndo, onRemoveVol}) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [pastOpen, setPastOpen] = useState(false);
-  const [logging, setLogging] = useState(false);
-  const [logDate, setLogDate] = useState('');
-  const [logVols, setLogVols] = useState('');
-  const [logNotes, setLogNotes] = useState('');
   const priorityClass = isDone ? 'done' : item.priority.toLowerCase();
   const isMissed = type==='recurring' && item.missedLast && !item.completedThisCycle;
   const isCompletedThisCycle = type==='recurring' && item.completedThisCycle;
@@ -758,12 +694,6 @@ function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, o
   const schedule = type==='recurring' ? (item.schedule||[]) : [];
   const totalSignups = schedule.reduce((s,slot)=>s+slot.volunteers.length,0);
   const nextSlot = schedule[0];
-
-  // Filter history for this specific task by title match
-  const pastCompletions = type==='recurring' && history
-    ? history.filter(h=>h.type==='recurring' && h.title?.toLowerCase()===item.title?.toLowerCase())
-        .sort((a,b)=>(b.completedDate||'').localeCompare(a.completedDate||''))
-    : [];
 
   return (
     <div className={`card ${priorityClass}${isMissed?' missed':''}`}>
@@ -829,66 +759,6 @@ function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, o
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Past completions dropdown for recurring tasks */}
-      {type==='recurring' && !isDone && (
-        <div style={{marginTop:6}}>
-          <button
-            className="schedule-toggle"
-            style={{borderColor: pastCompletions.length>0 ? '#86efac' : undefined}}
-            onClick={()=>setPastOpen(o=>!o)}
-          >
-            <span>🕓 Past Completions</span>
-            <span style={{display:'flex',alignItems:'center',gap:6}}>
-              <span style={{fontSize:'.68rem',background: pastCompletions.length>0?'#dcfce7':'#f1f5f9',color:pastCompletions.length>0?'#15803d':'#94a3b8',borderRadius:'999px',padding:'1px 7px',fontWeight:700}}>
-                {pastCompletions.length} {pastCompletions.length===1?'time':'times'}
-              </span>
-              <span style={{fontSize:'.8rem',transition:'transform .2s',display:'inline-block',transform:pastOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
-            </span>
-          </button>
-          {pastOpen && (
-            <div className="schedule-grid">
-              {pastCompletions.length===0
-                ? <div style={{padding:'8px 10px',fontSize:'.75rem',color:'#94a3b8',fontStyle:'italic'}}>No completions recorded yet.</div>
-                : pastCompletions.map((entry,i)=>(
-                  <PastCompletionRow key={i} entry={entry} onUpdate={onUpdateHistory} onDelete={onDeleteHistory} />
-                ))
-              }
-              {/* Log past completion */}
-              {logging ? (
-                <div style={{background:'#f8fafc',border:'1.5px solid #93c5fd',borderRadius:8,padding:'10px',marginTop:4,display:'flex',flexDirection:'column',gap:8}} onClick={e=>e.stopPropagation()}>
-                  <div style={{fontSize:'.72rem',fontWeight:700,color:'var(--navy)',textTransform:'uppercase',letterSpacing:'.04em'}}>Log a Past Completion</div>
-                  <div>
-                    <div style={{fontSize:'.68rem',fontWeight:700,color:'var(--muted)',marginBottom:3}}>Date completed</div>
-                    <input type="date" value={logDate} onChange={e=>setLogDate(e.target.value)}
-                      style={{width:'100%',border:'1.5px solid var(--border)',borderRadius:6,padding:'5px 8px',fontSize:'.78rem',fontFamily:'DM Sans,sans-serif'}}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:'.68rem',fontWeight:700,color:'var(--muted)',marginBottom:3}}>Volunteer name(s) — comma separated</div>
-                    <input value={logVols} onChange={e=>setLogVols(e.target.value)} placeholder="John, Jane, Bob"
-                      style={{width:'100%',border:'1.5px solid var(--border)',borderRadius:6,padding:'5px 8px',fontSize:'.78rem',fontFamily:'DM Sans,sans-serif'}}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:'.68rem',fontWeight:700,color:'var(--muted)',marginBottom:3}}>Notes (optional)</div>
-                    <input value={logNotes} onChange={e=>setLogNotes(e.target.value)} placeholder="Any details..."
-                      style={{width:'100%',border:'1.5px solid var(--border)',borderRadius:6,padding:'5px 8px',fontSize:'.78rem',fontFamily:'DM Sans,sans-serif'}}/>
-                  </div>
-                  <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
-                    <button className="btn btn-gray btn-sm" onClick={()=>setLogging(false)}>Cancel</button>
-                    <button className="btn btn-green btn-sm" onClick={()=>{
-                      if(!logDate){ alert('Please pick a date.'); return; }
-                      onLogPast(item.title, logDate, logVols.split(',').map(v=>v.trim()).filter(Boolean), logNotes, item.frequency);
-                      setLogDate(''); setLogVols(''); setLogNotes(''); setLogging(false);
-                    }}>Save</button>
-                  </div>
-                </div>
-              ) : (
-                <button className="btn btn-ghost btn-sm" style={{marginTop:4,alignSelf:'flex-start'}} onClick={()=>setLogging(true)}>+ Log Past Completion</button>
-              )}
             </div>
           )}
         </div>
