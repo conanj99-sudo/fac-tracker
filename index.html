@@ -1,4 +1,11 @@
 <!DOCTYPE html>
+<!--
+  FAC – Friday Afternoon Club app (JP2 Independent School)
+  CHANGELOG
+  v1.1 (Oct 2026) – Added "Skip These Months" setting to recurring tasks (set in Edit).
+                    No dates are scheduled in skipped months, and sign-ups on those dates are removed.
+  v1.0 (Oct 2026) – Removed the Past Completions dropdown from task cards.
+-->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -166,6 +173,9 @@ const LS_ONEOFF = "fac_oneoff";
 const LS_MY_NAME = "fac_my_name";
 const LS_HISTORY = "fac_history";
 
+const APP_VERSION = "v1.1";
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
 const uid = () => Math.random().toString(36).slice(2,9);
 
 // Date helpers
@@ -175,6 +185,26 @@ const fmtDate = (d) => { if(!d) return ''; const dt = d instanceof Date ? d : pa
 const addDays = (d,n) => { const dt=new Date(d); dt.setDate(dt.getDate()+n); return dt; };
 const toISO = (d) => { const dt = d instanceof Date ? d : new Date(d); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; };
 const freqDays = {Daily:1, Weekly:7, 'Bi-Weekly':14, Monthly:30};
+
+// Skipped months (e.g. no mowing in winter). Months are numbers 0=Jan ... 11=Dec.
+const isSkipped = (dt, skip) => !!dt && (skip||[]).includes(dt.getMonth());
+// Keep stepping forward by the task's frequency until we land outside the skipped months
+const stepToAllowed = (dt, days, skip) => {
+  let cur = dt; let guard = 0;
+  while(isSkipped(cur, skip) && guard < 400){ cur = addDays(cur, days); guard++; }
+  return cur;
+};
+// Show skipped months nicely, e.g. "Nov–Feb"
+const fmtMonths = (arr) => {
+  const set = new Set(arr||[]);
+  if(set.size===0) return '';
+  const starts = [...set].filter(m=>!set.has((m+11)%12));
+  if(starts.length===1){
+    const s = starts[0]; const e = (s+set.size-1)%12;
+    return set.size===1 ? MONTHS[s] : `${MONTHS[s]}–${MONTHS[e]}`;
+  }
+  return [...set].sort((a,b)=>a-b).map(m=>MONTHS[m]).join(', ');
+};
 
 // Advance a recurring task's due date if it has passed; flag as missed if not completed
 const advanceIfPast = (item) => {
@@ -190,7 +220,7 @@ const advanceIfPast = (item) => {
 };
 
 // Generate next 8 occurrence dates from a starting nextDue
-const getNext8Dates = (nextDue, frequency) => {
+const getNext8Dates = (nextDue, frequency, skip) => {
   if(!nextDue || !frequency) return [];
   const days = freqDays[frequency] || 7;
   let cur = parseDate(nextDue);
@@ -198,10 +228,11 @@ const getNext8Dates = (nextDue, frequency) => {
   // If nextDue is in the past, advance to next future occurrence first
   const t = today();
   while(cur < t) cur = addDays(cur, days);
+  cur = stepToAllowed(cur, days, skip);
   const dates = [];
   for(let i=0; i<8; i++){
     dates.push(toISO(cur));
-    cur = addDays(cur, days);
+    cur = stepToAllowed(addDays(cur, days), days, skip);
   }
   return dates;
 };
@@ -209,7 +240,7 @@ const getNext8Dates = (nextDue, frequency) => {
 // Migrate or build schedule array for a recurring item
 const ensureSchedule = (item) => {
   if(item.schedule && Array.isArray(item.schedule) && item.schedule.length>0) return item;
-  const dates = getNext8Dates(item.nextDue, item.frequency);
+  const dates = getNext8Dates(item.nextDue, item.frequency, item.skipMonths);
   return {...item, schedule: dates.map(d=>({date:d, volunteers: item.volunteers||[]}))};
 };
 
@@ -217,17 +248,19 @@ const ensureSchedule = (item) => {
 const refreshSchedule = (item) => {
   const t = today();
   const days = freqDays[item.frequency] || 7;
-  let existing = (item.schedule||[]).filter(s=>{ const d=parseDate(s.date); return d && d>=t; });
+  const skip = item.skipMonths || [];
+  // Drop past dates and any dates in skipped months (this also removes sign-ups on those dates)
+  let existing = (item.schedule||[]).filter(s=>{ const d=parseDate(s.date); return d && d>=t && !isSkipped(d, skip); });
   const needed = 8;
   // If schedule is empty, seed it with the nextDue date itself as the first slot
   if(existing.length===0){
-    const start = parseDate(item.nextDue) || today();
+    const start = stepToAllowed(parseDate(item.nextDue) || today(), days, skip);
     existing.push({date: toISO(start), volunteers: item.volunteers||[]});
   }
   // Fill remaining slots by adding the frequency interval
   while(existing.length < needed){
     const lastDate = parseDate(existing[existing.length-1].date);
-    const next = addDays(lastDate, days);
+    const next = stepToAllowed(addDays(lastDate, days), days, skip);
     existing.push({date: toISO(next), volunteers:[]});
   }
   existing = existing.slice(0, needed);
@@ -238,7 +271,7 @@ const newRecurring = () => {
   const base = {
     id: uid(), title:"", location:"", skill:"Any", priority:"Medium", notes:"",
     volunteers:[], frequency:"Weekly", nextDue: toISO(addDays(today(),7)),
-    completedThisCycle: false, missedLast: false, schedule:[]
+    completedThisCycle: false, missedLast: false, schedule:[], skipMonths:[]
   };
   return refreshSchedule(base);
 };
@@ -367,8 +400,10 @@ function App() {
     // If the Next Due Date was changed, rebuild the schedule from the new date.
     // Otherwise keep the existing schedule (preserving volunteer sign-ups).
     const dueDateChanged = original && original.nextDue !== item.nextDue;
+    const sortedKey = (a) => JSON.stringify([...(a||[])].sort((x,y)=>x-y));
+    const skipChanged = original && sortedKey(original.skipMonths) !== sortedKey(item.skipMonths);
     let updated;
-    if(dueDateChanged){
+    if(dueDateChanged || skipChanged){
       // Rebuild from the new date, but carry over any volunteers already on matching dates
       const oldSlots = {};
       (original.schedule||[]).forEach(s=>{ oldSlots[s.date] = s.volunteers; });
@@ -403,7 +438,7 @@ function App() {
     }, history);
     const oldSchedule = item.schedule||[];
     const lastDate = oldSchedule.length>0 ? parseDate(oldSchedule[oldSchedule.length-1].date) : today();
-    const newSlot = {date: toISO(addDays(lastDate, days)), volunteers:[]};
+    const newSlot = {date: toISO(stepToAllowed(addDays(lastDate, days), days, item.skipMonths)), volunteers:[]};
     const newSchedule = [...oldSchedule.slice(1), newSlot];
     const next = recurring.map(r=>r.id!==id?r:{
       ...r, completedThisCycle: true, missedLast: false,
@@ -613,7 +648,7 @@ function App() {
         </div>
       </div>
 
-      <div className="footer">Auto-saves to Google Sheets · Refreshes every 30 seconds · JP2 Independent School — FAC</div>
+      <div className="footer">{APP_VERSION} · Auto-saves to Google Sheets · Refreshes every 30 seconds · JP2 Independent School — FAC</div>
 
       {/* Add Recurring Modal */}
       {showAddRecurring && (
@@ -716,6 +751,7 @@ function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, o
             {item.location && <span className="tag tag-location">📍 {item.location}</span>}
             {item.addedBy && <span className="tag" style={{background:'#f1f5f9',color:'var(--muted)'}}>Requested by {item.addedBy}</span>}
             {type==='recurring' && item.frequency && <span className="tag tag-freq">🔁 {item.frequency}</span>}
+            {type==='recurring' && (item.skipMonths||[]).length>0 && <span className="tag tag-due">⏸ Off {fmtMonths(item.skipMonths)}</span>}
             {type==='recurring' && isOverdue && <span className="tag tag-overdue">⏰ Overdue</span>}
             {type==='recurring' && nextSlot && !isOverdue && (
               <span className="tag tag-due">📅 Next: {fmtDate(nextSlot.date)}</span>
@@ -802,6 +838,10 @@ function TaskCard({item, type, isDone, onSignup, onEdit, onDelete, onMarkDone, o
 function ItemFormModal({title, sub, initial, onSave, onClose, showAddedBy, isRecurring}) {
   const [form, setForm] = useState({...initial});
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const toggleMonth = (mi) => setForm(f=>{
+    const cur = f.skipMonths||[];
+    return {...f, skipMonths: cur.includes(mi) ? cur.filter(x=>x!==mi) : [...cur, mi]};
+  });
   return (
     <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal">
@@ -837,6 +877,29 @@ function ItemFormModal({title, sub, initial, onSave, onClose, showAddedBy, isRec
             </div>
           </div>
         )}
+        {isRecurring && (
+          <div className="field">
+            <label>Skip These Months</label>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:6}}>
+              {MONTHS.map((m,mi)=>{
+                const on = (form.skipMonths||[]).includes(mi);
+                return (
+                  <button key={m} onClick={()=>toggleMonth(mi)} style={{
+                    border: on?'1.5px solid var(--navy)':'1.5px solid var(--border)',
+                    background: on?'var(--navy)':'white', color: on?'white':'var(--text)',
+                    borderRadius:7, padding:'6px 0', fontSize:'.78rem', fontWeight:700,
+                    fontFamily:'DM Sans,sans-serif', cursor:'pointer'
+                  }}>{m}</button>
+                );
+              })}
+            </div>
+            <div style={{fontSize:'.72rem',color:'var(--muted)',marginTop:6,lineHeight:1.4}}>
+              {(form.skipMonths||[]).length>0
+                ? <>No dates will be scheduled in <b>{fmtMonths(form.skipMonths)}</b>. Anyone signed up for those dates will be removed.</>
+                : <>Click months to pause this task (for example, no mowing in winter).</>}
+            </div>
+          </div>
+        )}
         {showAddedBy && (
           <div className="field">
             <label>Requested By</label>
@@ -849,7 +912,11 @@ function ItemFormModal({title, sub, initial, onSave, onClose, showAddedBy, isRec
         </div>
         <div className="modal-btns">
           <button className="btn btn-gray" onClick={onClose}>Cancel</button>
-          <button className="btn btn-green" onClick={()=>{ if(!form.title.trim()) return alert('Please enter a title.'); onSave(form); }}>Save</button>
+          <button className="btn btn-green" onClick={()=>{
+            if(!form.title.trim()) return alert('Please enter a title.');
+            if((form.skipMonths||[]).length===12) return alert('You can\'t skip all 12 months. Unselect at least one.');
+            onSave(form);
+          }}>Save</button>
         </div>
       </div>
     </div>
